@@ -323,7 +323,7 @@ async function saveNow(){
     const res = await fetch('/api/questions',{method:'POST',headers:{'Content-Type':'application/json'},body: JSON.stringify(Q)});
     if(res.status === 503){
       const body = await res.json().catch(()=>({}));
-      if(body.error === 'REDIS_NOT_CONFIGURED'){
+      if(body.error === 'REDIS_NOT_CONFIGURED' || body.error === 'STORAGE_NOT_CONFIGURED'){
         setStorageMode('readonly');
         setSaveStatus('readonly');
         return;
