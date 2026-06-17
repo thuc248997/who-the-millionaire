@@ -2,6 +2,10 @@
   "framework": null,
   "buildCommand": null,
   "outputDirectory": ".",
+  "functions": {
+    "api/questions.js": { "regions": ["sin1"] },
+    "api/state.js":     { "regions": ["sin1"] }
+  },
   "rewrites": [
     { "source": "/", "destination": "/game.html" }
   ]

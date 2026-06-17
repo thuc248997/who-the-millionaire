@@ -802,8 +802,8 @@ function paintStaticIcons(){
   renderMain();
   renderBank();
   connectWS();
-  // Kiểm tra sớm khả năng lưu của server
-  saveNow();
+  // Kiểm tra khả năng lưu: delay nhẹ để không block render ban đầu
+  setTimeout(saveNow, 2000);
 })();
 </script>
 </body>

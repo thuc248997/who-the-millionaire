@@ -64,6 +64,11 @@ const Sync = (() => {
 
   /* ── WebSocket (LAN qua server.js) ─────────────────────── */
   function connectWS(){
+    // Vercel serverless không có WS server — bỏ qua, dùng polling ngay
+    if(typeof location !== 'undefined' &&
+       (location.hostname.endsWith('.vercel.app') || location.hostname.endsWith('.vercel.sh'))){
+      startPolling(); return;
+    }
     let opened = false, s;
     try{
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
