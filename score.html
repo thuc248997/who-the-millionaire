@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Scorer — Who's the Millionaire · Creative Force</title>
+<link rel="stylesheet" href="cf.css">
+<style>
+/* ─── RESET ─────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font-sans);background:var(--bg-2);color:var(--fg-1);-webkit-font-smoothing:antialiased}
+#app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+button{font-family:var(--font-sans);cursor:pointer}
+input{font-family:var(--font-sans)}
+.ic{display:inline-block;vertical-align:middle;flex:none}
+.tbadge{display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-pill);flex:none}
+
+/* ─── TOPBAR ────────────────────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;gap:14px;padding:0 20px;height:56px;background:var(--bg-1);border-bottom:1px solid var(--border-1);flex-shrink:0}
+.tb-title{display:flex;flex-direction:column;line-height:1.2}
+.tb-title .t1{font-size:14px;font-weight:700;letter-spacing:-.01em;color:var(--fg-1)}
+.tb-title .t2{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}
+.tb-gap{flex:1}
+.chip{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--fg-3)}
+.chip-dot{width:8px;height:8px;border-radius:50%;background:var(--fg-3);flex-shrink:0;transition:background var(--dur-base)}
+.chip.on{color:var(--cf-green-700)} .chip.on .chip-dot{background:var(--cf-green)}
+.chip.warn{color:#C57A1E} .chip.warn .chip-dot{background:var(--warning);animation:pulse .9s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ─── CONTEXT STRIP ─────────────────────────────────────────────────── */
+.ctx{display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--bg-1);border-bottom:1px solid var(--border-1);flex-wrap:wrap;flex-shrink:0;min-height:46px}
+.ctx-round{display:inline-flex;align-items:center;height:24px;padding:0 11px;background:var(--cf-blue);color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:var(--radius-sm);white-space:nowrap}
+.ctx-qcnt{font-size:12px;color:var(--fg-2);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-family:var(--font-mono)}
+.ctx-pill{display:inline-flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--radius-pill);padding:3px 12px 3px 4px;font-size:12px;font-weight:700;color:var(--fg-1)}
+.ctx-tag{display:inline-flex;align-items:center;gap:5px;height:22px;border-radius:var(--radius-sm);padding:0 9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:2px solid}
+.ctx-tag.d20{background:var(--success-soft);color:var(--cf-green-700);border-color:var(--cf-green)}
+.ctx-tag.d30{background:var(--warning-soft);color:#C57A1E;border-color:var(--warning)}
+.ctx-tag.d40{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.ctx-tag.x2{background:var(--cf-purple-100);color:var(--cf-purple-700);border-color:var(--cf-purple)}
+.ctx-tag.tf{background:var(--accent-soft);color:var(--cf-blue);border-color:var(--cf-blue)}
+.ctx-timer{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-family:var(--font-disp-sans);font-size:17px;font-weight:700;color:var(--fg-2)}
+.ctx-timer.danger{color:var(--danger)}
+
+/* ─── BODY ──────────────────────────────────────────────────────────── */
+.body{flex:1;display:flex;overflow:hidden}
+.pleft{flex:1;display:flex;flex-direction:column;padding:18px 20px;gap:14px;overflow-y:auto}
+
+/* empty / waiting state */
+.waiting{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;color:var(--fg-2)}
+.waiting .w-icon{display:grid;place-items:center;width:64px;height:64px;border-radius:var(--radius-pill);background:var(--bg-3);color:var(--cf-blue)}
+.waiting .w-title{font-size:18px;font-weight:700;color:var(--fg-1)}
+.waiting .w-sub{font-size:13px;max-width:380px;line-height:1.6}
+
+/* question card */
+.qbox{background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:20px 24px;display:flex;flex-direction:column;gap:12px}
+.qnum{font-size:11px;letter-spacing:.12em;color:var(--cf-blue);text-transform:uppercase;font-weight:700}
+.qtxt{font-size:20px;font-weight:700;line-height:1.4;letter-spacing:-.01em;color:var(--fg-1);text-wrap:pretty}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--radius-md);padding:9px 12px;font-size:14px;font-weight:500;color:var(--fg-1);display:flex;align-items:center;gap:8px}
+.opt.correct{border-color:var(--cf-green);background:var(--success-soft);color:var(--cf-green-700);font-weight:700}
+.ans-line{display:flex;align-items:baseline;gap:9px;background:var(--success-soft);border:1px solid var(--cf-green);border-radius:var(--radius-md);padding:10px 14px}
+.ans-line .lbl{font-size:10px;letter-spacing:.1em;color:var(--cf-green-700);font-weight:700;text-transform:uppercase;white-space:nowrap}
+.ans-line .val{font-size:15px;font-weight:700;color:var(--fg-1)}
+
+/* scoring card */
+.card{background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:18px 20px}
+.card-hdr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--fg-2);text-transform:uppercase;margin-bottom:14px}
+.card-hdr .ic{color:var(--cf-blue)}
+.scgrid{display:flex;flex-direction:column;gap:9px}
+.scrow{display:flex;align-items:center;gap:11px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--radius-md);padding:10px 13px}
+.scrow .sc-name{flex:1;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scrow .sc-pts{font-family:var(--font-disp-sans);font-size:14px;font-weight:700;color:var(--fg-2);min-width:50px;text-align:right}
+.scbtns{display:flex;gap:6px}
+.sbtn{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:var(--radius-sm);border:2px solid;font-size:12px;font-weight:700;background:#fff;transition:all var(--dur-fast)}
+.sb-ok{border-color:var(--cf-green);color:var(--cf-green-700)}
+.sb-ng{border-color:var(--danger);color:var(--danger)}
+.sb-no{border-color:var(--border-2);color:var(--fg-2)}
+.sbtn.act-ok{background:var(--cf-green);color:#fff;border-color:var(--cf-green)}
+.sbtn.act-ng{background:var(--danger);color:#fff;border-color:var(--danger)}
+.sbtn.act-no{background:var(--fg-2);color:#fff;border-color:var(--fg-2)}
+.apply-row{display:flex;align-items:center;gap:12px;margin-top:14px}
+.btn-apply{display:inline-flex;align-items:center;gap:8px;padding:0 24px;height:42px;border-radius:var(--radius-sm);border:2px solid var(--cf-blue);background:var(--cf-blue);color:#fff;font-size:14px;font-weight:700;transition:all var(--dur-fast)}
+.btn-apply:hover{background:var(--cf-blue-700);border-color:var(--cf-blue-700)}
+.btn-apply:disabled{opacity:.45;cursor:not-allowed}
+.apply-hint{font-size:12px;color:var(--fg-3)}
+
+/* manual adjust */
+.madj-grid{display:flex;flex-direction:column;gap:8px}
+.madj-row{display:flex;align-items:center;gap:10px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--radius-md);padding:8px 12px}
+.madj-row .m-name{flex:1;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.madj-row input{width:74px;background:var(--bg-1);border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:7px 9px;font-size:13px;font-weight:700;text-align:center;outline:none}
+.madj-row input:focus{border-color:var(--cf-blue);box-shadow:var(--shadow-focus)}
+.mbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:32px;border-radius:var(--radius-sm);border:2px solid;background:#fff;font-size:15px;font-weight:700;transition:all var(--dur-fast)}
+.mbtn.plus{border-color:var(--cf-green);color:var(--cf-green-700)}
+.mbtn.plus:hover{background:var(--cf-green);color:#fff}
+.mbtn.minus{border-color:var(--danger);color:var(--danger)}
+.mbtn.minus:hover{background:var(--danger);color:#fff}
+
+/* ─── SCOREBOARD ────────────────────────────────────────────────────── */
+.pright{width:288px;flex-shrink:0;border-left:1px solid var(--border-1);display:flex;flex-direction:column;background:var(--bg-1)}
+.scores-hdr{display:flex;align-items:center;gap:8px;padding:16px 18px;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--fg-2);text-transform:uppercase;border-bottom:1px solid var(--border-1)}
+.scores-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.scard{display:flex;align-items:center;gap:11px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--radius-md);padding:12px;transition:border-color var(--dur-slow),background var(--dur-slow)}
+.scard.leader{border-color:var(--cf-blue);background:var(--bg-1);box-shadow:var(--shadow-sm)}
+.scard.curturn{border-color:var(--cf-blue);background:var(--accent-soft)}
+.srank{font-family:var(--font-disp-sans);font-size:13px;font-weight:700;color:var(--fg-3);width:18px;text-align:center}
+.scard.leader .srank{color:var(--cf-blue)}
+.sinfo{flex:1;min-width:0}
+.sname{font-size:13px;font-weight:700;color:var(--fg-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spts{font-family:var(--font-disp-sans);font-size:22px;font-weight:900;color:var(--fg-1);letter-spacing:-.02em}
+.scard.leader .spts{color:var(--cf-blue)}
+.sdelta{font-size:12px;font-weight:700;border-radius:var(--radius-sm);padding:2px 7px;opacity:0;transition:opacity var(--dur-slow)}
+.sdelta.show{opacity:1}
+.sdelta.pos{background:var(--success-soft);color:var(--cf-green-700)}
+.sdelta.neg{background:var(--danger-soft);color:var(--danger)}
+
+/* ─── TOAST ─────────────────────────────────────────────────────────── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);display:flex;align-items:center;gap:9px;background:var(--cf-dark-purple);color:#fff;border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:12px 20px;font-size:14px;font-weight:600;z-index:2000;transition:transform var(--dur-slow) var(--ease-standard);pointer-events:none;max-width:90vw}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast .ic{color:var(--cf-blue-400);flex:none}
+
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <img src="assets/cf-mark.svg" width="32" height="32" alt="Creative Force">
+    <div class="tb-title">
+      <span class="t1">Bảng điều khiển Chấm điểm</span>
+      <span class="t2">Who's the Millionaire · Scorer</span>
+    </div>
+    <div class="tb-gap"></div>
+    <div class="chip" id="host-chip"><div class="chip-dot"></div><span>Host</span></div>
+    <div class="chip warn" id="conn-chip"><div class="chip-dot"></div><span id="conn-txt">Đang kết nối…</span></div>
+  </div>
+
+  <div class="ctx" id="ctx"></div>
+
+  <div class="body">
+    <div class="pleft" id="pleft"></div>
+
+    <div class="pright">
+      <div class="scores-hdr"><span id="ic-board"></span> Bảng điểm</div>
+      <div class="scores-list" id="slist"></div>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script src="icons.js"></script>
+<script src="sync.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════ STATE ════
+   Trang Scorer (Role 2): chỉ ĐỌC flow (host công bố), chỉ GHI điểm —
+   luôn dưới dạng delta (Sync.push 'adjust') nên không bao giờ ghi đè
+   thay đổi đồng thời từ host. */
+const S = {
+  flow: null,
+  scores: [0,0,0,0,0],
+  marks: [null,null,null,null,null],
+  ctxKey: '',                 // đổi câu hỏi → reset marks
+  timerTick: null,
+};
+
+function ctxKeyOf(f){
+  if(!f) return '';
+  const r3 = f.r3 || {};
+  return [f.screen,f.round,f.qIdx,r3.teamIdx,r3.qInTurn,r3.diff,r3.transfer].join('|');
+}
+
+function onState(st){
+  let deltas = null;
+  if(Array.isArray(st.scores) && JSON.stringify(st.scores)!==JSON.stringify(S.scores)){
+    deltas = st.scores.map((s,i)=>s-(S.scores[i]||0));
+    S.scores = [...st.scores];
+  }
+  if(st.flow !== undefined){
+    S.flow = st.flow;
+    const key = ctxKeyOf(st.flow);
+    if(key !== S.ctxKey){ S.ctxKey = key; S.marks = [null,null,null,null,null]; }
+  }
+  render(deltas && deltas.some(d=>d) ? deltas : undefined);
+}
+
+/* ══════════════════════════════════════════════════════════ RENDER ═══ */
+function render(deltas){
+  renderCtx();
+  renderLeft();
+  renderScores(deltas);
+}
+
+function teams(){ return (S.flow && S.flow.teams) || ['Đội 1','Đội 2','Đội 3','Đội 4','Đội 5']; }
+
+function renderCtx(){
+  const f = S.flow, el = document.getElementById('ctx');
+  if(!f || f.screen!=='game' || !f.round){
+    const msg = !f ? 'Chưa có dữ liệu từ host'
+      : f.screen==='setup'   ? 'Host đang thiết lập đội…'
+      : f.screen==='intro'   ? `Vòng ${f.round} sắp bắt đầu`
+      : f.screen==='results' ? 'Game đã kết thúc — xem bảng điểm'
+      : 'Đang chờ…';
+    el.innerHTML = `<span class="ctx-qcnt">${msg}</span>`;
+    return;
+  }
+  const names = {1:'VÒNG 1 · DÒ SÓNG', 2:'VÒNG 2 · CỘNG HƯỞNG', 3:'VÒNG 3 · ĐỘT PHÁ'};
+  let html = `<span class="ctx-round">${names[f.round]||('VÒNG '+f.round)}</span>`;
+  if(f.round===3){
+    const r3 = f.r3||{};
+    const ti = Array.isArray(r3.order) ? r3.order[r3.teamIdx] : 0;
+    html += `<span class="ctx-pill">${teamBadge(ti,22)}<span>${teams()[ti]}</span></span>`;
+    html += `<span class="ctx-qcnt">Câu ${ (r3.qInTurn||0)+1 } / 5</span>`;
+    if(r3.diff) html += `<span class="ctx-tag d${r3.diff}">${{20:'DỄ • 20đ',30:'TB • 30đ',40:'KHÓ • 40đ'}[r3.diff]}</span>`;
+    if(r3.nhanBan) html += `<span class="ctx-tag x2">${ic('copy',12)} Nhân bản ×2</span>`;
+    if(r3.transfer!==null && r3.transfer!==undefined)
+      html += `<span class="ctx-tag tf">${ic('transfer',12)} → ${teams()[r3.transfer]}</span>`;
+  } else {
+    html += `<span class="ctx-qcnt">CÂU ${ (f.qIdx||0)+1 } / ${f.round===1?15:9}</span>`;
+    if(f.q && f.q.pts) html += `<span class="ctx-tag d20" style="border-color:var(--cf-blue);background:var(--accent-soft);color:var(--cf-blue)">${f.q.pts} điểm</span>`;
+  }
+  html += `<span class="ctx-timer" id="ctx-timer"></span>`;
+  el.innerHTML = html;
+  tickTimer();
+}
+
+function renderLeft(){
+  const f = S.flow, el = document.getElementById('pleft');
+  if(!f || f.screen!=='game' || !f.round){
+    el.innerHTML = `
+      <div class="waiting">
+        <div class="w-icon">${ic('clock',28)}</div>
+        <div class="w-title">${!f || f.screen==='setup' ? 'Chờ host bắt đầu game' : f.screen==='results' ? 'Game đã kết thúc' : `Vòng ${f?f.round:''} sắp bắt đầu`}</div>
+        <div class="w-sub">Màn hình này tự cập nhật theo thời gian thực khi host điều khiển game trên <strong>game.html</strong>. Bạn chấm điểm tại đây — điểm hiện ngay trên màn hình host.</div>
+      </div>`;
+    return;
+  }
+
+  /* câu hỏi hiện tại */
+  let qHTML;
+  if(f.q){
+    const letters=['A','B','C','D'];
+    const correct = f.revealed ? correctIdx(f.q.opts, f.q.ans) : -1;
+    const opts = (f.q.type==='mc' ? (f.q.opts||[]) : []).filter(o=>o&&o.trim());
+    qHTML = `
+    <div class="qbox">
+      <div class="qnum">${esc(f.q.num||'CÂU HỎI')} · ${f.q.type==='mc'?'TRẮC NGHIỆM':'TỰ LUẬN'}${f.revealed?' · ĐÃ HIỆN ĐÁP ÁN':''}</div>
+      <div class="qtxt">${esc(f.q.text||'—')}</div>
+      ${opts.length?`<div class="opts">${opts.map((o,i)=>{
+        const hasPrefix=/^[A-Da-d][\s.:)\-]/.test(o.trim());
+        return `<div class="opt ${i===correct?'correct':''}">${esc(hasPrefix?o:letters[i]+'. '+o)}</div>`;
+      }).join('')}</div>`:''}
+      <div class="ans-line"><span class="lbl">${ic('check',12)} Đáp án</span><span class="val">${esc(f.q.ans||'—')}</span></div>
+    </div>`;
+  } else {
+    qHTML = `<div class="qbox"><div class="qtxt" style="color:var(--fg-2);font-size:16px">Host đang chuyển câu hỏi…</div></div>`;
+  }
+
+  /* khu chấm điểm */
+  const ids = scorableTeams(f);
+  const scoringHTML = ids.length ? `
+    <div class="card">
+      <div class="card-hdr">${ic('clipboard-check',16)} Chấm điểm câu này</div>
+      <div class="scgrid">
+        ${ids.map(i=>`
+        <div class="scrow" data-ti="${i}">
+          ${teamBadge(i,30)}
+          <span class="sc-name">${esc(teams()[i])}</span>
+          <span class="sc-pts">${S.scores[i]}đ</span>
+          <div class="scbtns">
+            <button class="sbtn sb-ok ${S.marks[i]==='ok'?'act-ok':''}" onclick="setMark(${i},'ok')">${ic('check',14)} Đúng</button>
+            <button class="sbtn sb-ng ${S.marks[i]==='ng'?'act-ng':''}" onclick="setMark(${i},'ng')">${ic('x',14)} Sai</button>
+            <button class="sbtn sb-no ${S.marks[i]==='no'?'act-no':''}" onclick="setMark(${i},'no')">${ic('minus',14)} Bỏ</button>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="apply-row">
+        <button class="btn-apply" id="btn-apply" onclick="applyMarks()">${ic('check',16)} Áp dụng điểm</button>
+        <span class="apply-hint" id="apply-hint"></span>
+      </div>
+    </div>` : `
+    <div class="card"><div class="card-hdr">${ic('clipboard-check',16)} Chấm điểm</div>
+      <div style="font-size:13px;color:var(--fg-2)">Chờ host chọn gói câu hỏi cho lượt này…</div></div>`;
+
+  /* điều chỉnh thủ công */
+  const manualHTML = `
+    <div class="card">
+      <div class="card-hdr">${ic('bar-chart',16)} Điều chỉnh thủ công</div>
+      <div class="madj-grid">
+        ${teams().map((n,i)=>`
+        <div class="madj-row">
+          ${teamBadge(i,26)}
+          <span class="m-name">${esc(n)}</span>
+          <input type="number" id="madj-${i}" min="0" step="5" placeholder="điểm" value="${manualVals[i]||''}" oninput="manualVals[${i}]=this.value">
+          <button class="mbtn plus"  title="Cộng điểm" onclick="manualAdjust(${i},1)">+</button>
+          <button class="mbtn minus" title="Trừ điểm"  onclick="manualAdjust(${i},-1)">−</button>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  el.innerHTML = qHTML + scoringHTML + manualHTML;
+  updateApplyHint();
+}
+
+/* giống correctOptIdx của game.html */
+function correctIdx(opts, ans){
+  if(!ans || !opts || !opts.length) return -1;
+  const a = ans.trim();
+  const m = a.match(/^([A-Da-d])(?:[\s.:)\-]|$)/);
+  if(m) return 'ABCD'.indexOf(m[1].toUpperCase());
+  const norm = s => (s||'').replace(/^[A-Da-d][\s.:)\-]+/,'').trim().toLowerCase();
+  const an = norm(a);
+  if(!an) return -1;
+  return opts.findIndex(o => norm(o)===an);
+}
+
+function renderScores(deltas){
+  const tn = teams();
+  const sorted = tn.map((n,i)=>({n,s:S.scores[i],i})).sort((a,b)=>b.s-a.s);
+  const f = S.flow, r3 = f && f.r3;
+  const curturn = f && f.round===3 && Array.isArray(r3&&r3.order) ? r3.order[r3.teamIdx] : -1;
+  document.getElementById('slist').innerHTML = sorted.map((t,rank)=>`
+    <div class="scard ${rank===0?'leader':''} ${t.i===curturn?'curturn':''}">
+      <div class="srank">${rank+1}</div>
+      ${teamBadge(t.i,32)}
+      <div class="sinfo">
+        <div class="sname">${esc(t.n)}</div>
+        <div class="spts">${t.s}</div>
+      </div>
+      ${deltas && deltas[t.i] ? `<div class="sdelta show ${deltas[t.i]>0?'pos':'neg'}">${deltas[t.i]>0?'+':''}${deltas[t.i]}</div>` : '<div class="sdelta"></div>'}
+    </div>`).join('');
+  if(deltas) setTimeout(()=>renderScores(), 2500);
+}
+
+/* ══════════════════════════════════════════════════════════ TIMER ════ */
+function tickTimer(){
+  clearInterval(S.timerTick);
+  const el = ()=>document.getElementById('ctx-timer');
+  const f = S.flow;
+  if(!f || !f.timer || !f.timer.endsAt){ const e=el(); if(e) e.innerHTML=''; return; }
+  const upd = ()=>{
+    const e = el(); if(!e){ clearInterval(S.timerTick); return; }
+    const left = Math.max(0, Math.ceil((f.timer.endsAt - Date.now())/1000));
+    e.innerHTML = `${ic('clock',16)} ${left}s`;
+    e.classList.toggle('danger', left<=3);
+    if(left<=0) clearInterval(S.timerTick);
+  };
+  upd();
+  S.timerTick = setInterval(upd, 250);
+}
+
+/* ══════════════════════════════════════════════════════════ SCORING ══ */
+function setMark(i, r){
+  S.marks[i] = (S.marks[i]===r) ? null : r;   // bấm lại để bỏ chọn
+  document.querySelectorAll(`.scrow[data-ti="${i}"] .sbtn`).forEach((btn,idx)=>{
+    const states=['ok','ng','no'];
+    btn.classList.toggle(`act-${states[idx]}`, S.marks[i]===states[idx]);
+  });
+  updateApplyHint();
+}
+
+function updateApplyHint(){
+  const hint = document.getElementById('apply-hint');
+  if(!hint) return;
+  const deltas = computeScoreDeltas(S.flow, S.marks);
+  const parts = deltas.map((d,i)=>d?`${teams()[i]}: ${d>0?'+':''}${d}`:null).filter(Boolean);
+  hint.textContent = parts.length ? parts.join(' · ') : 'Chọn Đúng / Sai / Bỏ cho từng đội';
+}
+
+let applying = false;
+async function applyMarks(){
+  if(applying) return;
+  const deltas = computeScoreDeltas(S.flow, S.marks);
+  if(!deltas.some(d=>d)){ toast('Chưa có thay đổi điểm nào để áp dụng','minus'); return; }
+  applying = true;
+  const btn = document.getElementById('btn-apply'); if(btn) btn.disabled = true;
+  const ok = await Sync.push('adjust', {deltas});   // server cộng delta tuần tự — không race
+  applying = false;
+  if(ok){
+    S.marks = [null,null,null,null,null];
+    renderLeft();
+    toast('Đã cập nhật điểm — host thấy ngay lập tức!','check');
+  } else {
+    if(btn) btn.disabled = false;
+    toast('Lỗi kết nối — điểm CHƯA được lưu, thử lại!','wifi-off');
+  }
+}
+
+const manualVals = {};
+async function manualAdjust(i, sign){
+  const val = Math.abs(parseInt(manualVals[i],10) || 0);
+  if(!val){ toast('Nhập số điểm trước','minus'); return; }
+  const deltas = [0,0,0,0,0]; deltas[i] = sign*val;
+  const ok = await Sync.push('adjust', {deltas});
+  if(ok){ manualVals[i]=''; toast(`${teams()[i]}: ${sign>0?'+':'−'}${val} điểm`,'check'); }
+  else toast('Lỗi kết nối — thử lại!','wifi-off');
+}
+
+/* ══════════════════════════════════════════════════════════ MISC ═════ */
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+let toastTimer;
+function toast(msg, iconName){
+  const el = document.getElementById('toast');
+  el.innerHTML = (iconName?ic(iconName,18):'') + `<span>${esc(msg)}</span>`;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2700);
+}
+
+function onMode(mode){
+  const chip = document.getElementById('conn-chip'), txt = document.getElementById('conn-txt');
+  if(mode==='ws'){ chip.className='chip on'; txt.textContent='Realtime · WebSocket'; }
+  else if(mode==='poll'){ chip.className='chip on'; txt.textContent='Đồng bộ · Polling ~2s'; }
+  else { chip.className='chip warn'; txt.textContent='Đang kết nối…'; }
+}
+function onPresence(counts){
+  const n = (counts && counts.game) || 0;
+  document.getElementById('host-chip').className = 'chip' + (n>0?' on':'');
+}
+
+/* ══════════════════════════════════════════════════════════ INIT ═════ */
+document.getElementById('ic-board').innerHTML = ic('bar-chart',16);
+render();
+Sync.init({ role:'scorer', onState, onPresence, onMode });
+</script>
+</body>
+</html>

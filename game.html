@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Who's the Millionaire — Game Host · Creative Force</title>
+<link rel="stylesheet" href="cf.css">
+<style>
+/* ─── RESET ─────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font-sans);background:var(--bg-1);color:var(--fg-1);overflow:hidden;user-select:none;-webkit-font-smoothing:antialiased}
+#app{height:100vh;position:relative}
+button{font-family:var(--font-sans);cursor:pointer}
+input{font-family:var(--font-sans)}
+::selection{background:rgba(62,130,251,.2)}
+
+/* shared icon */
+.ic{display:inline-block;vertical-align:middle;flex:none}
+.tbadge{display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-pill);flex:none}
+
+/* ─── SCREENS ───────────────────────────────────────────────────────── */
+.screen{position:absolute;inset:0;display:none;flex-direction:column}
+.screen.active{display:flex}
+
+/* dark hero base (setup / intro / results) */
+.hero{
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(110,88,236,.42) 0%, rgba(62,130,251,.12) 38%, transparent 66%),
+    var(--cf-dark-purple);
+  color:var(--cf-white);position:absolute;inset:0;overflow:hidden;
+}
+.hero::after{
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+}
+.hero>*{position:relative;z-index:1}
+.brandmark{display:inline-flex;align-items:center;gap:10px}
+.brandmark .bm-word{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.66)}
+
+/* ─── SETUP ─────────────────────────────────────────────────────────── */
+#s-setup{align-items:center;justify-content:center}
+.setup-wrap{width:100%;max-width:920px;padding:40px 28px}
+.setup-logo{text-align:center;margin-bottom:44px}
+.setup-logo .bm{display:inline-flex;align-items:center;gap:12px;margin-bottom:22px}
+.setup-logo .bm .eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.setup-logo h1{
+  font-family:var(--font-disp-sans);font-weight:900;font-size:58px;line-height:1.04;letter-spacing:-.02em;color:#fff;
+}
+.setup-logo h1 em{font-family:var(--font-display);font-style:italic;font-weight:400;color:var(--cf-blue-400)}
+.setup-logo p{color:rgba(255,255,255,.55);font-size:13px;letter-spacing:.04em;margin-top:16px}
+.setup-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:30px}
+.team-card{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius-lg);
+  padding:20px 14px;text-align:center;transition:border-color var(--dur-base) var(--ease-standard),background var(--dur-base);
+}
+.team-card:focus-within{border-color:var(--cf-blue-400);background:rgba(255,255,255,.08)}
+.team-card .tbadge{margin:0 auto 12px}
+.team-card label{display:block;font-size:11px;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;font-weight:700}
+.team-card input{
+  width:100%;background:rgba(13,13,30,.5);border:1px solid rgba(255,255,255,.16);border-radius:var(--radius-sm);
+  padding:9px 10px;color:#fff;font-size:15px;font-weight:600;text-align:center;outline:none;transition:border-color var(--dur-base),box-shadow var(--dur-base);
+}
+.team-card input:focus{border-color:var(--cf-blue);box-shadow:var(--shadow-focus)}
+.team-card input::placeholder{color:rgba(255,255,255,.35);font-weight:500}
+
+/* primary button on dark */
+.btn-cta{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  background:var(--cf-blue);border:2px solid var(--cf-blue);border-radius:var(--radius-sm);
+  font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#fff;
+  transition:background var(--dur-base) var(--ease-standard),border-color var(--dur-base);
+}
+.btn-cta:hover{background:var(--cf-blue-700);border-color:var(--cf-blue-700)}
+.btn-start{width:100%;padding:0 24px;height:52px;font-size:15px}
+
+/* ─── ROUND INTRO ───────────────────────────────────────────────────── */
+#s-intro{align-items:center;justify-content:center;text-align:center}
+.intro-wrap{max-width:600px;padding:32px;display:flex;flex-direction:column;align-items:center}
+.intro-bm{position:absolute;top:28px;left:32px}
+.intro-vong{font-size:13px;letter-spacing:.18em;color:var(--cf-blue-400);text-transform:uppercase;font-weight:700;opacity:0;animation:fiu .5s var(--ease-decel) .15s forwards}
+.intro-num{
+  font-family:var(--font-display);font-weight:500;font-size:128px;line-height:1;letter-spacing:-.02em;
+  background:linear-gradient(160deg,#fff 0%,var(--cf-blue-400) 55%,var(--cf-purple-400) 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  opacity:0;animation:fiu .5s var(--ease-decel) .3s forwards;margin:6px 0
+}
+.intro-name{font-family:var(--font-disp-sans);font-size:46px;font-weight:900;letter-spacing:-.02em;color:#fff;opacity:0;animation:fiu .5s var(--ease-decel) .45s forwards}
+.intro-desc{max-width:480px;color:rgba(255,255,255,.66);font-size:16px;line-height:1.7;margin:18px auto 24px;opacity:0;animation:fiu .5s var(--ease-decel) .6s forwards}
+.intro-rules-box{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius-lg);
+  padding:22px 26px;max-width:560px;width:100%;text-align:left;opacity:0;animation:fiu .5s var(--ease-decel) .75s forwards
+}
+.intro-rules-box h3{font-size:11px;letter-spacing:.14em;color:var(--cf-blue-400);text-transform:uppercase;font-weight:700;margin-bottom:14px}
+.intro-rules-box ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.intro-rules-box li{font-size:14px;color:rgba(255,255,255,.72);display:flex;gap:10px;align-items:flex-start;line-height:1.5}
+.intro-rules-box li .ic{color:var(--cf-blue-400);margin-top:3px}
+.btn-enter{margin-top:30px;padding:0 38px;height:48px;font-size:14px;opacity:0;animation:fiu .5s var(--ease-decel) .9s forwards}
+@keyframes fiu{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── GAME SCREEN (light play surface) ──────────────────────────────── */
+#s-game{display:none;flex-direction:column;background:var(--bg-1)}
+#s-game.active{display:flex}
+
+.ghdr{
+  display:flex;align-items:center;gap:14px;padding:0 20px;height:56px;
+  background:var(--bg-1);border-bottom:1px solid var(--border-1);flex-shrink:0;
+}
+.ghdr-mark{display:grid;place-items:center;flex:none}
+.ghdr-round{
+  display:inline-flex;align-items:center;height:24px;padding:0 11px;background:var(--cf-blue);color:#fff;
+  font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:var(--radius-sm);white-space:nowrap;
+}
+.ghdr-qcnt{font-size:12px;color:var(--fg-2);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-family:var(--font-mono)}
+.ghdr-title{font-size:13px;font-weight:700;color:var(--fg-1);letter-spacing:.16em;text-transform:uppercase;flex:1;text-align:center}
+.ghdr-btns{display:flex;gap:8px}
+
+/* CF buttons */
+.hbtn{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-2);background:var(--bg-1);color:var(--fg-1);font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;transition:background var(--dur-fast),border-color var(--dur-fast),color var(--dur-fast);
+}
+.hbtn:hover{background:var(--bg-2)}
+.hbtn-accent{border-color:var(--cf-blue);color:var(--cf-blue)}
+.hbtn-accent:hover{background:var(--accent-soft)}
+
+/* R3 topbar */
+.r3bar{
+  display:none;align-items:center;gap:12px;padding:0 20px;height:46px;
+  background:var(--bg-2);border-bottom:1px solid var(--border-1);flex-shrink:0;
+}
+.r3bar-lbl{font-size:10px;letter-spacing:.1em;color:var(--fg-3);text-transform:uppercase;font-weight:700}
+.r3-teampill{
+  display:inline-flex;align-items:center;gap:8px;background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-pill);
+  padding:4px 14px 4px 5px;font-size:13px;font-weight:700;color:var(--fg-1);
+}
+.r3-qprog{font-size:12px;color:var(--fg-2);font-weight:600}
+.r3-diffpill{display:inline-flex;align-items:center;height:22px;border-radius:var(--radius-sm);padding:0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:2px solid}
+.r3-diffpill.d20{background:var(--success-soft);color:var(--cf-green-700);border-color:var(--cf-green)}
+.r3-diffpill.d30{background:var(--warning-soft);color:#C57A1E;border-color:var(--warning)}
+.r3-diffpill.d40{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.r3-cardsbar{margin-left:auto;display:flex;gap:6px}
+.r3cardbtn{
+  display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-2);
+  background:var(--bg-1);color:var(--fg-2);font-size:11px;font-weight:700;white-space:nowrap;transition:all var(--dur-fast);
+}
+.r3cardbtn:hover:not(:disabled){border-color:var(--cf-blue);color:var(--cf-blue)}
+.r3cardbtn:disabled{opacity:.4;cursor:not-allowed}
+
+/* body */
+.gbody{flex:1;display:flex;overflow:hidden}
+.pleft{flex:1;display:flex;flex-direction:column;padding:20px 22px;gap:14px;overflow-y:auto}
+
+/* nhân bản bar */
+.nban-bar{
+  display:none;align-items:center;justify-content:center;gap:8px;
+  background:var(--cf-purple-100);border:1px solid var(--cf-purple-300);border-radius:var(--radius-md);
+  padding:9px 14px;font-size:13px;color:var(--cf-purple-700);font-weight:700;text-align:center;
+}
+.nban-bar.vis{display:flex}
+.nban-bar .ic{color:var(--cf-purple)}
+
+/* meta badges */
+.qmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;height:24px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:0 11px;border-radius:var(--radius-sm);border:2px solid}
+.badge-type{background:#fff;color:var(--cf-blue);border-color:var(--cf-blue)}
+.badge-easy{background:var(--success-soft);color:var(--cf-green-700);border-color:var(--cf-green)}
+.badge-mid{background:var(--warning-soft);color:#C57A1E;border-color:var(--warning)}
+.badge-hard{background:var(--danger-soft);color:var(--danger);border-color:var(--danger)}
+.badge-pts{background:var(--cf-blue);color:#fff;border-color:var(--cf-blue)}
+
+/* question box */
+.qbox{
+  background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+  padding:28px 32px;display:flex;flex-direction:column;gap:18px;flex:1;
+}
+.qnum{font-size:12px;letter-spacing:.12em;color:var(--cf-blue);text-transform:uppercase;font-weight:700}
+.qtxt{font-size:30px;font-weight:700;line-height:1.35;letter-spacing:-.01em;color:var(--fg-1);text-wrap:pretty}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.opt{
+  background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--radius-md);
+  padding:14px 16px;font-size:18px;font-weight:500;color:var(--fg-1);transition:border-color var(--dur-base),background var(--dur-base);display:flex;align-items:center;gap:8px;
+}
+.opt.correct{border-color:var(--cf-green);background:var(--success-soft);color:var(--cf-green-700);font-weight:700}
+
+/* timer */
+.timer-sec{display:flex;align-items:center;gap:20px;background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-lg);padding:16px 22px;flex-shrink:0}
+.tring-wrap{position:relative;width:80px;height:80px;flex-shrink:0}
+.tring-wrap svg{transform:rotate(-90deg);width:80px;height:80px}
+.ring-bg{fill:none;stroke:var(--border-1);stroke-width:6}
+.ring-fill{fill:none;stroke:var(--cf-blue);stroke-width:6;stroke-linecap:round;stroke-dasharray:207;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke var(--dur-slow)}
+.ring-fill.danger{stroke:var(--danger)}
+.tval{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-disp-sans);font-size:26px;font-weight:700;color:var(--fg-1);transition:color var(--dur-slow)}
+.tval.danger{color:var(--danger)}
+.tctrl{flex:1}
+.tlbl{font-size:10px;letter-spacing:.1em;color:var(--fg-3);text-transform:uppercase;font-weight:700;margin-bottom:10px}
+.tbtns{display:flex;gap:8px;flex-wrap:wrap}
+.tbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-2);background:var(--bg-1);font-size:12px;font-weight:700;color:var(--fg-1);white-space:nowrap;transition:all var(--dur-fast)}
+.tbtn:hover{background:var(--bg-2)}
+.tb10:hover{border-color:var(--cf-blue);color:var(--cf-blue)}
+.tb15:hover{border-color:var(--cf-purple);color:var(--cf-purple)}
+.tbstop{color:var(--danger);border-color:#E3B7B6}
+.tbstop:hover{background:var(--danger-soft);border-color:var(--danger)}
+
+/* answer reveal */
+.ans-box{background:var(--success-soft);border:1px solid var(--cf-green);border-radius:var(--radius-lg);padding:16px 22px;display:none}
+.ans-box.vis{display:block}
+.ans-lbl{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.1em;color:var(--cf-green-700);font-weight:700;text-transform:uppercase;margin-bottom:7px}
+.ans-txt{font-size:20px;font-weight:700;color:var(--fg-1)}
+
+/* action bar */
+.actbar{display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.abtn{display:inline-flex;align-items:center;gap:7px;padding:0 20px;height:42px;border-radius:var(--radius-sm);border:2px solid;font-size:14px;font-weight:700;transition:all var(--dur-fast)}
+.ab-reveal{background:#fff;border-color:var(--border-2);color:var(--fg-1)}
+.ab-reveal:hover{background:var(--bg-2)}
+.ab-score{background:var(--cf-blue);border-color:var(--cf-blue);color:#fff}
+.ab-score:hover{background:var(--cf-blue-700);border-color:var(--cf-blue-700)}
+.ab-next{background:#fff;border-color:var(--cf-blue);color:var(--cf-blue)}
+.ab-next:hover{background:var(--accent-soft)}
+
+/* scoreboard */
+.pright{width:288px;flex-shrink:0;border-left:1px solid var(--border-1);display:flex;flex-direction:column;background:var(--bg-2)}
+.scores-hdr{display:flex;align-items:center;gap:8px;padding:16px 18px;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--fg-2);text-transform:uppercase;border-bottom:1px solid var(--border-1)}
+.scores-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.scard{display:flex;align-items:center;gap:11px;background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-md);padding:12px;transition:border-color var(--dur-slow),background var(--dur-slow),box-shadow var(--dur-slow)}
+.scard.leader{border-color:var(--cf-blue);box-shadow:var(--shadow-sm)}
+.scard.curturn{border-color:var(--cf-blue);background:var(--accent-soft)}
+.srank{font-family:var(--font-disp-sans);font-size:13px;font-weight:700;color:var(--fg-3);width:18px;text-align:center}
+.scard.leader .srank{color:var(--cf-blue)}
+.sinfo{flex:1;min-width:0}
+.sname{font-size:13px;font-weight:700;color:var(--fg-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spts{font-family:var(--font-disp-sans);font-size:22px;font-weight:900;color:var(--fg-1);letter-spacing:-.02em}
+.scard.leader .spts{color:var(--cf-blue)}
+.sdelta{font-size:12px;font-weight:700;border-radius:var(--radius-sm);padding:2px 7px;opacity:0;transition:opacity var(--dur-slow)}
+.sdelta.show{opacity:1}
+.sdelta.pos{background:var(--success-soft);color:var(--cf-green-700)}
+.sdelta.neg{background:var(--danger-soft);color:var(--danger)}
+
+/* ─── MODALS ────────────────────────────────────────────────────────── */
+.moverlay{position:fixed;inset:0;background:rgba(27,26,61,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:1000}
+.moverlay.open{display:flex}
+.mbox{background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);padding:28px 30px;width:100%;max-width:600px;max-height:84vh;overflow-y:auto}
+.mtitle{display:flex;align-items:center;justify-content:center;gap:9px;font-size:18px;font-weight:700;color:var(--fg-1);letter-spacing:-.01em;margin-bottom:22px;text-align:center}
+.mtitle .ic{color:var(--cf-blue)}
+
+/* scoring modal */
+.scgrid{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.scrow{display:flex;align-items:center;gap:11px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--radius-md);padding:12px 14px}
+.scrow .sc-name{flex:1;font-weight:700;font-size:14px}
+.scrow .sc-pts{font-family:var(--font-disp-sans);font-size:15px;font-weight:700;color:var(--fg-2);min-width:56px;text-align:right}
+.scbtns{display:flex;gap:6px}
+.sbtn{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:var(--radius-sm);border:2px solid;font-size:12px;font-weight:700;background:#fff;transition:all var(--dur-fast)}
+.sb-ok{border-color:var(--cf-green);color:var(--cf-green-700)}
+.sb-ng{border-color:var(--danger);color:var(--danger)}
+.sb-no{border-color:var(--border-2);color:var(--fg-2)}
+.sbtn.act-ok{background:var(--cf-green);color:#fff;border-color:var(--cf-green)}
+.sbtn.act-ng{background:var(--danger);color:#fff;border-color:var(--danger)}
+.sbtn.act-no{background:var(--fg-2);color:#fff;border-color:var(--fg-2)}
+.mfooter{display:flex;gap:10px;justify-content:center}
+.mfbtn{display:inline-flex;align-items:center;gap:7px;padding:0 26px;height:42px;border-radius:var(--radius-sm);border:2px solid;font-size:14px;font-weight:700;transition:all var(--dur-fast)}
+.mfbtn-apply{background:var(--cf-blue);border-color:var(--cf-blue);color:#fff}
+.mfbtn-apply:hover{background:var(--cf-blue-700);border-color:var(--cf-blue-700)}
+.mfbtn-cancel{background:#fff;border-color:var(--border-2);color:var(--fg-1)}
+.mfbtn-cancel:hover{background:var(--bg-2)}
+
+/* difficulty modal */
+.diffgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+.diffcard{background:var(--bg-1);border:2px solid var(--border-1);border-radius:var(--radius-lg);padding:24px 14px;text-align:center;cursor:pointer;transition:all var(--dur-base) var(--ease-standard)}
+.diffcard:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.diffcard.d20:hover,.diffcard.sel-20{border-color:var(--cf-green);background:var(--success-soft)}
+.diffcard.d30:hover,.diffcard.sel-30{border-color:var(--warning);background:var(--warning-soft)}
+.diffcard.d40:hover,.diffcard.sel-40{border-color:var(--danger);background:var(--danger-soft)}
+.dpts{font-family:var(--font-disp-sans);font-size:44px;font-weight:900;line-height:1;margin-bottom:6px;letter-spacing:-.03em}
+.d20 .dpts{color:var(--cf-green-700)} .d30 .dpts{color:#C57A1E} .d40 .dpts{color:var(--danger)}
+.dlbl{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--fg-2);text-transform:uppercase}
+.dsub{margin-top:9px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.d20 .dsub{color:var(--cf-green-700)} .d30 .dsub{color:#C57A1E} .d40 .dsub{color:var(--danger)}
+
+/* cards modal */
+.cardsgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.ccard{background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-lg);padding:20px 16px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.cc-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:var(--radius-pill);background:var(--accent-soft);color:var(--cf-blue);margin-bottom:12px}
+.cc-name{font-size:14px;font-weight:700;color:var(--fg-1);margin-bottom:6px}
+.cc-desc{font-size:12px;color:var(--fg-2);line-height:1.5;margin-bottom:12px;flex:1}
+.cc-count{font-family:var(--font-disp-sans);font-size:18px;font-weight:700;color:var(--fg-1);margin-bottom:12px}
+.cc-btn{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:var(--radius-sm);border:2px solid var(--cf-blue);background:var(--cf-blue);color:#fff;font-size:12px;font-weight:700;transition:all var(--dur-fast)}
+.cc-btn:hover:not(:disabled){background:var(--cf-blue-700);border-color:var(--cf-blue-700)}
+.cc-btn:disabled{opacity:.4;cursor:not-allowed;background:#fff;color:var(--fg-3);border-color:var(--border-2)}
+.cards-note{margin-top:16px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--radius-md);padding:14px 16px;font-size:12px;color:var(--fg-2);line-height:1.7}
+.cards-note strong{color:var(--fg-1)}
+
+/* transfer modal */
+.transfer-targets{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.tfbtn{display:flex;align-items:center;gap:11px;width:100%;padding:12px 14px;background:var(--bg-1);border:1px solid var(--border-1);border-radius:var(--radius-md);color:var(--fg-1);font-size:14px;font-weight:600;transition:all var(--dur-fast)}
+.tfbtn:hover{border-color:var(--cf-blue);background:var(--accent-soft)}
+.tfbtn .tf-pts{margin-left:auto;font-family:var(--font-disp-sans);font-size:14px;font-weight:700;color:var(--fg-2)}
+
+/* ─── RESULTS ───────────────────────────────────────────────────────── */
+#s-results{align-items:center;justify-content:center}
+.res-wrap{width:100%;max-width:700px;padding:40px;text-align:center}
+.res-trophy{display:inline-grid;place-items:center;width:64px;height:64px;border-radius:var(--radius-pill);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:var(--cf-blue-400);margin-bottom:20px}
+.res-title{font-family:var(--font-disp-sans);font-size:54px;font-weight:900;letter-spacing:-.02em;color:#fff;margin-bottom:8px}
+.res-sub{color:rgba(255,255,255,.5);font-size:13px;letter-spacing:.04em;margin-bottom:40px}
+.res-podium{display:flex;flex-direction:column;gap:10px;margin-bottom:34px}
+.resrow{display:flex;align-items:center;gap:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-lg);padding:16px 20px}
+.resrow.r1{border-color:var(--cf-blue);background:rgba(62,130,251,.14)}
+.resrow.r2{border-color:rgba(180,110,218,.5);background:rgba(153,67,201,.1)}
+.resrow.r3{border-color:rgba(216,134,137,.5);background:rgba(216,134,137,.1)}
+.res-rank{font-family:var(--font-disp-sans);font-size:24px;font-weight:900;width:40px;text-align:center;color:rgba(255,255,255,.5)}
+.r1 .res-rank{color:var(--cf-blue-400)} .r2 .res-rank{color:var(--cf-purple-400)} .r3 .res-rank{color:var(--cf-salmon)}
+.res-info{flex:1;text-align:left}
+.res-name{font-size:17px;font-weight:700;color:#fff}
+.res-pts{font-family:var(--font-disp-sans);font-size:24px;font-weight:900;color:#fff;letter-spacing:-.02em}
+.r1 .res-pts{color:var(--cf-blue-400)}
+.btn-restart{display:inline-flex;align-items:center;gap:8px;padding:0 36px;height:48px;background:transparent;border:2px solid rgba(255,255,255,.3);border-radius:var(--radius-sm);color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;transition:all var(--dur-fast)}
+.btn-restart:hover{background:rgba(255,255,255,.1);border-color:#fff}
+
+/* res row team badge sits on dark — keep soft bg */
+.resrow .tbadge,.scard .tbadge,.scrow .tbadge,.r3-teampill .tbadge,.tfbtn .tbadge{box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+
+/* ─── TOAST ─────────────────────────────────────────────────────────── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);display:flex;align-items:center;gap:9px;background:var(--cf-dark-purple);color:#fff;border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:12px 20px;font-size:14px;font-weight:600;z-index:2000;transition:transform var(--dur-slow) var(--ease-standard);pointer-events:none;max-width:90vw}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast .ic{color:var(--cf-blue-400);flex:none}
+
+/* scrollbar */
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+.hero ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══════════════════════════════ SETUP ════════════════════════════ -->
+<div id="s-setup" class="screen hero active" data-screen-label="Setup" style="background-size: auto; background-position: center center">
+  <div class="setup-wrap">
+    <div class="setup-logo">
+      <div class="bm">
+        <img src="assets/cf-mark.svg" width="34" height="34" alt="Creative Force">
+        <span class="eyebrow">Creative Force</span>
+      </div>
+      <h1>Who's the <em>Millionaire</em></h1>
+      <p>Summer Indoor Tournament 2026</p>
+    </div>
+    <div class="setup-grid" id="setup-grid"></div>
+    <button class="btn-cta btn-start" onclick="startGame()"><span id="ic-start"></span> Bắt đầu game</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════ ROUND INTRO ══════════════════════════ -->
+<div id="s-intro" class="screen hero" data-screen-label="Round intro">
+  <div class="intro-bm brandmark"><img src="assets/cf-mark.svg" width="28" height="28" alt=""><span class="bm-word">Creative Force</span></div>
+  <div class="intro-wrap">
+    <div class="intro-vong" id="intro-vong">VÒNG 1</div>
+    <div class="intro-num"  id="intro-num">01</div>
+    <div class="intro-name" id="intro-name">Dò Sóng</div>
+    <div class="intro-desc" id="intro-desc"></div>
+    <div class="intro-rules-box"><h3>Luật chơi</h3><ul id="intro-rules"></ul></div>
+    <button class="btn-cta btn-enter" onclick="enterRound()">Vào cuộc <span id="ic-enter"></span></button>
+  </div>
+</div>
+
+<!-- ════════════════════════════ GAME ══════════════════════════════ -->
+<div id="s-game" class="screen" data-screen-label="Game">
+
+  <!-- Header -->
+  <div class="ghdr">
+    <div class="ghdr-mark"><img src="assets/cf-mark.svg" width="30" height="30" alt="Creative Force"></div>
+    <div class="ghdr-round" id="ghdr-round">VÒNG 1</div>
+    <div class="ghdr-qcnt" id="ghdr-qcnt">CÂU 1/15</div>
+    <div class="ghdr-title">Who's the Millionaire</div>
+    <div class="ghdr-qcnt" id="presence" style="color:var(--fg-3)">○ SCORER OFFLINE</div>
+    <div class="ghdr-btns">
+      <button class="hbtn" id="btn-diff"  style="display:none" onclick="openDiffModal()"></button>
+      <button class="hbtn" id="btn-cards" style="display:none" onclick="openCardsModal()"></button>
+      <button class="hbtn" id="btn-endround" onclick="endRound()"></button>
+      <button class="hbtn hbtn-accent" id="btn-finish" onclick="goResults()"></button>
+    </div>
+  </div>
+
+  <!-- R3 Topbar -->
+  <div class="r3bar" id="r3bar">
+    <span class="r3bar-lbl">Lượt</span>
+    <div class="r3-teampill" id="r3-teampill">—</div>
+    <div class="r3-qprog"    id="r3-qprog">Câu 1/5</div>
+    <div class="r3-diffpill" id="r3-diffpill" style="display:none">—</div>
+    <div class="r3-cardsbar" id="r3-cardsbar"></div>
+  </div>
+
+  <div class="gbody">
+    <!-- Left panel -->
+    <div class="pleft">
+      <div class="nban-bar" id="nban-bar"><span id="ic-nban"></span> Thẻ nhân bản kích hoạt — Đúng: ×2 điểm · Sai: −điểm gói</div>
+
+      <div class="qmeta" id="qmeta">
+        <span class="badge badge-type" id="badge-type">TRẮC NGHIỆM</span>
+        <span class="badge" id="badge-diff" style="display:none"></span>
+        <span class="badge badge-pts" id="badge-pts" style="display:none"></span>
+      </div>
+
+      <div class="qbox">
+        <div class="qnum" id="qnum">CÂU HỎI 01</div>
+        <div class="qtxt" id="qtxt">Sẵn sàng bắt đầu!</div>
+        <div class="opts" id="opts"></div>
+      </div>
+
+      <div class="timer-sec">
+        <div class="tring-wrap">
+          <svg viewBox="0 0 80 80">
+            <circle class="ring-bg" cx="40" cy="40" r="33"/>
+            <circle class="ring-fill" id="ring" cx="40" cy="40" r="33"/>
+          </svg>
+          <div class="tval" id="tval">--</div>
+        </div>
+        <div class="tctrl">
+          <div class="tlbl">Bộ đếm thời gian</div>
+          <div class="tbtns">
+            <button class="tbtn tb10"  onclick="startTimer(10)"><span class="ic-clock"></span> 10s · Trắc nghiệm</button>
+            <button class="tbtn tb15"  onclick="startTimer(15)"><span class="ic-clock"></span> 15s · Tự luận</button>
+            <button class="tbtn tbstop" onclick="stopTimer()"><span id="ic-stop"></span> Dừng</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ans-box" id="ans-box">
+        <div class="ans-lbl"><span id="ic-anschk"></span> Đáp án</div>
+        <div class="ans-txt" id="ans-txt">—</div>
+      </div>
+
+      <div class="actbar">
+        <button class="abtn ab-reveal" onclick="prevQ()"><span id="ic-prev"></span> Câu trước</button>
+        <button class="abtn ab-reveal" onclick="revealAns()"><span id="ic-reveal"></span> Hiện đáp án</button>
+        <button class="abtn ab-score"  onclick="openScoreModal()"><span id="ic-score"></span> Chấm điểm</button>
+        <button class="abtn ab-next"   onclick="nextQ()">Câu tiếp theo <span id="ic-next"></span></button>
+      </div>
+    </div>
+
+    <!-- Right panel: scoreboard -->
+    <div class="pright">
+      <div class="scores-hdr"><span id="ic-board"></span> Bảng điểm</div>
+      <div class="scores-list" id="slist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════ RESULTS ═══════════════════════════ -->
+<div id="s-results" class="screen hero" data-screen-label="Results">
+  <div class="res-wrap">
+    <div class="res-trophy" id="res-trophy"></div>
+    <div class="res-title">Kết quả</div>
+    <div class="res-sub">Who's the Millionaire — Bảng xếp hạng cuối cùng</div>
+    <div class="res-podium" id="res-podium"></div>
+    <button class="btn-restart" onclick="restart()"><span id="ic-restart"></span> Chơi lại</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SCORING MODAL ══════════════════════════ -->
+<div class="moverlay" id="m-score">
+  <div class="mbox">
+    <div class="mtitle" id="m-score-title">Chấm điểm</div>
+    <div class="scgrid" id="scgrid"></div>
+    <div class="mfooter">
+      <button class="mfbtn mfbtn-apply"  onclick="applyScores()"><span id="ic-apply"></span> Áp dụng điểm</button>
+      <button class="mfbtn mfbtn-cancel" onclick="closeM('m-score')">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ DIFFICULTY MODAL ═════════════════════════ -->
+<div class="moverlay" id="m-diff">
+  <div class="mbox">
+    <div class="mtitle" id="m-diff-title">Chọn gói câu hỏi</div>
+    <div class="diffgrid">
+      <div class="diffcard d20" onclick="pickDiff(20)">
+        <div class="dpts">20</div><div class="dlbl">điểm / câu</div><div class="dsub">Dễ</div>
+      </div>
+      <div class="diffcard d30" onclick="pickDiff(30)">
+        <div class="dpts">30</div><div class="dlbl">điểm / câu</div><div class="dsub">Trung bình</div>
+      </div>
+      <div class="diffcard d40" onclick="pickDiff(40)">
+        <div class="dpts">40</div><div class="dlbl">điểm / câu</div><div class="dsub">Khó</div>
+      </div>
+    </div>
+    <div class="mfooter">
+      <button class="mfbtn mfbtn-cancel" onclick="closeM('m-diff')">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ CARDS MODAL ═══════════════════════════ -->
+<div class="moverlay" id="m-cards">
+  <div class="mbox">
+    <div class="mtitle" id="m-cards-title">Thẻ chiến thuật</div>
+    <div class="cardsgrid" id="cardsgrid"></div>
+    <div class="cards-note">
+      <strong>Lưu ý:</strong><br>
+      • <strong>Thẻ nhân bản</strong>: Dùng <em>trước khi xem câu hỏi</em> (sau khi biết lĩnh vực). Đúng → ×2 điểm. Sai → −điểm gói.<br>
+      • <strong>Thẻ dịch chuyển</strong>: Từ bỏ quyền trả lời, chỉ định đội khác. Nếu đội kia <em>đúng</em>: đội kia +×2, đội chỉ định −điểm. Nếu đội kia <em>sai</em>: đội kia −điểm, đội chỉ định bình thường.
+    </div>
+    <div class="mfooter" style="margin-top:18px">
+      <button class="mfbtn mfbtn-cancel" onclick="closeM('m-cards')">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ TRANSFER MODAL ══════════════════════════ -->
+<div class="moverlay" id="m-transfer">
+  <div class="mbox" style="max-width:420px">
+    <div class="mtitle">Chuyển câu hỏi</div>
+    <p style="color:var(--fg-2);font-size:14px;margin-bottom:16px;text-align:center">Chọn đội nhận câu hỏi:</p>
+    <div class="transfer-targets" id="transfer-targets"></div>
+    <div class="mfooter">
+      <button class="mfbtn mfbtn-cancel" onclick="closeM('m-transfer')">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+</div><!-- #app -->
+
+<script src="icons.js"></script>
+<script src="sync.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════
+   PLACEHOLDER QUESTIONS — thay nội dung thực khi có câu hỏi
+   ══════════════════════════════════════════════════════════ */
+const Q = {
+  r1: Array.from({length:15},(_,i)=>({
+    text:`[VÒNG 1 • Câu ${i+1}] Nội dung câu hỏi — cập nhật sau. (Đây là câu ${i+1} trong 15 câu hỏi tổng quát: xã hội, toán học, khoa học, lịch sử...)`,
+    type: i%3===2 ? 'written' : 'mc',
+    opts: i%3===2 ? [] : ['A. Lựa chọn A','B. Lựa chọn B','C. Lựa chọn C','D. Lựa chọn D'],
+    ans: `Đáp án câu ${i+1} — cập nhật sau`,
+  })),
+  r2: [
+    ...Array.from({length:3},(_,i)=>({text:`[VÒNG 2 • DỄ ${i+1}] Câu hỏi dễ số ${i+1} — cập nhật sau.`,type:'mc', diff:'easy', pts:10,opts:['A. Lựa chọn A','B. Lựa chọn B','C. Lựa chọn C','D. Lựa chọn D'],ans:`Đáp án dễ ${i+1}`})),
+    ...Array.from({length:3},(_,i)=>({text:`[VÒNG 2 • TRUNG BÌNH ${i+1}] Câu hỏi trung bình số ${i+1} — cập nhật sau.`,type:'mc', diff:'medium', pts:20,opts:['A. Lựa chọn A','B. Lựa chọn B','C. Lựa chọn C','D. Lựa chọn D'],ans:`Đáp án TB ${i+1}`})),
+    ...Array.from({length:3},(_,i)=>({text:`[VÒNG 2 • KHÓ ${i+1}] Câu hỏi khó số ${i+1} — cập nhật sau.`,type:'written', diff:'hard', pts:30,opts:[], ans:`Đáp án khó ${i+1}`})),
+  ],
+  r3:{
+    20: Array.from({length:5},(_,ti)=>Array.from({length:5},(_,qi)=>({text:`[VÒNG 3 • GÓI 20đ • Đội ${ti+1} • Câu ${qi+1}] Nội dung câu hỏi — cập nhật sau.`,type:'mc', pts:20,opts:['A. Lựa chọn A','B. Lựa chọn B','C. Lựa chọn C','D. Lựa chọn D'],ans:`Đáp án gói 20đ / đội ${ti+1} / câu ${qi+1}`}))),
+    30: Array.from({length:5},(_,ti)=>Array.from({length:5},(_,qi)=>({text:`[VÒNG 3 • GÓI 30đ • Đội ${ti+1} • Câu ${qi+1}] Nội dung câu hỏi — cập nhật sau.`,type:'mc', pts:30,opts:['A. Lựa chọn A','B. Lựa chọn B','C. Lựa chọn C','D. Lựa chọn D'],ans:`Đáp án gói 30đ / đội ${ti+1} / câu ${qi+1}`}))),
+    40: Array.from({length:5},(_,ti)=>Array.from({length:5},(_,qi)=>({text:`[VÒNG 3 • GÓI 40đ • Đội ${ti+1} • Câu ${qi+1}] Nội dung câu hỏi — cập nhật sau.`,type:'written', pts:40, opts:[],ans:`Đáp án gói 40đ / đội ${ti+1} / câu ${qi+1}`}))),
+  },
+};
+
+function applyQuestions(p){
+  if(!p) return false;
+  if(p.r1) Q.r1 = p.r1;
+  if(p.r2) Q.r2 = p.r2;
+  if(p.r3) Q.r3 = p.r3;
+  return true;
+}
+
+/* ── ĐỒNG BỘ (sync.js): WebSocket trên LAN → fallback polling trên serverless.
+   Server giữ trạng thái chuẩn. Trang này (host) là NGƯỜI GHI DUY NHẤT của
+   flow (màn hình / vòng / câu hỏi); điểm số đi theo delta nên host và
+   scorer chấm đồng thời không ghi đè lẫn nhau. ── */
+function onSyncState(st){
+  if(G.round===0 && G.screen==='setup' && !G._restored){
+    G._restored = true;                     // khôi phục phiên đang chơi khi host refresh trang
+    restoreFlow(st);
+  }
+  if(Array.isArray(st.scores) && JSON.stringify(st.scores)!==JSON.stringify(G.scores)){
+    const deltas = st.scores.map((s,i)=>s-(G.scores[i]||0));
+    G.scores = [...st.scores];
+    renderScores(deltas.some(d=>d)?deltas:undefined);
+    if(G.round>0) toast('Điểm đã được cập nhật bởi Scorer!','bar-chart');
+  }
+}
+
+/* Khôi phục lại đúng màn hình / câu hỏi đang chơi từ flow trên server
+   (chạy 1 lần lúc tải trang) — refresh không quay về màn hình bắt đầu. */
+function restoreFlow(st){
+  const f = st.flow;
+  if(f && Array.isArray(f.teams)){ G.teams = f.teams; initSetup(); }
+  if(!f || !f.round || !f.screen || f.screen==='setup') return;
+
+  G.round = f.round;
+  G.qIdx  = f.qIdx || 0;
+  if(Array.isArray(st.scores)) G.scores = [...st.scores];
+  G.cards = Array.isArray(f.cards) && f.cards.length
+    ? f.cards : G.teams.map(()=>({chiVien:1,nhanBan:1,dichChuyen:1}));
+  if(f.r3){
+    G.r3TeamIdx = f.r3.teamIdx || 0;
+    G.r3QInTurn = f.r3.qInTurn || 0;
+    G.r3Diff    = f.r3.diff    || null;
+    G.r3NhanBan = !!f.r3.nhanBan;
+    G.r3Transfer = (f.r3.transfer === undefined) ? null : f.r3.transfer;
+    if(Array.isArray(f.r3.order)) G.r3Order = f.r3.order;
+  }
+
+  if(f.screen==='results'){ goResults(); return; }
+  if(f.screen==='intro'){ showRoundIntro(G.round); return; }
+
+  /* screen === 'game' — dựng lại đúng câu đang hiển thị */
+  if(G.round===3){
+    show('r3bar'); show('btn-diff'); show('btn-cards');
+    showS('s-game'); renderScores();
+    if(G.r3Diff){ renderQ3(); }
+    else { updateR3Bar(); blankQ(`Chuẩn bị cho ${G.teams[G.r3Order[G.r3TeamIdx]]}!`); openDiffModal(); }
+  } else {
+    hide('r3bar'); hide('btn-diff'); hide('btn-cards');
+    showS('s-game'); renderScores();
+    if(G.round===1) renderQ1(G.qIdx); else renderQ2(G.qIdx);
+  }
+  if(f.revealed) revealAns();
+  toast('Đã khôi phục phiên đang chơi!','rotate-ccw');
+}
+
+let flowTimer = null;
+function syncFlow(){                       // debounce — gom nhiều thay đổi liên tiếp thành 1 lần ghi
+  clearTimeout(flowTimer);
+  flowTimer = setTimeout(()=>Sync.push('flow', {flow: buildFlow()}), 120);
+}
+function buildFlow(){
+  return {
+    screen: G.screen, teams: G.teams, round: G.round, qIdx: G.qIdx,
+    q: G.curQ,
+    r3: {teamIdx:G.r3TeamIdx, qInTurn:G.r3QInTurn, diff:G.r3Diff, nhanBan:G.r3NhanBan, transfer:G.r3Transfer, order:G.r3Order},
+    cards: G.cards,
+    timer: G.timerEndsAt ? {dur:G.timeDur, endsAt:G.timerEndsAt} : null,
+    revealed: !!G.revealed,
+  };
+}
+
+function updatePresence(counts){
+  const el = document.getElementById('presence');
+  if(!el) return;
+  const n = (counts && counts.scorer) || 0;
+  el.style.color = n>0 ? 'var(--cf-green-700)' : 'var(--fg-3)';
+  el.textContent = n>0 ? `● SCORER ONLINE` : '○ SCORER OFFLINE';
+}
+
+/* ══════════════════════════════════════════════════════════ CONFIG ═══ */
+const ROUND_CFG = {
+  1:{ badge:'VÒNG 1', num:'01', name:'Dò Sóng',
+    desc:'Tất cả đội cùng tham gia. Trả lời nhanh câu hỏi kiến thức tổng quát.',
+    rules:['15 câu hỏi gồm trắc nghiệm và tự luận ngắn (xã hội, toán, khoa học, lịch sử…)','Trắc nghiệm: 10 giây | Tự luận: 15 giây','Trả lời đúng: +10 điểm | Sai hoặc không trả lời: 0 điểm (không bị trừ)','Tất cả đội cùng thi đồng thời, không bị loại','Điểm tối đa: 150 điểm'] },
+  2:{ badge:'VÒNG 2', num:'02', name:'Cộng Hưởng',
+    desc:'Câu hỏi tăng dần theo độ khó. Cẩn thận — trả lời sai sẽ bị trừ điểm!',
+    rules:['9 câu: 3 dễ (10đ), 3 trung bình (20đ), 3 khó (30đ)','Trả lời đúng: cộng điểm tương ứng','Trả lời sai hoặc không trả lời: bị trừ 50% điểm câu đó từ tổng điểm','Điểm âm sẽ được tính là 0 điểm','Tất cả đội tiếp tục thi, không bị loại | Điểm tối đa: 180 điểm'] },
+  3:{ badge:'VÒNG 3', num:'03', name:'Đột Phá',
+    desc:'Các đội thi đấu lần lượt! Chọn gói câu hỏi và sử dụng thẻ chiến thuật thông minh.',
+    rules:['Mỗi đội chọn gói: 20đ (dễ) / 30đ (TB) / 40đ (khó) — mỗi gói 5 câu','Mỗi đội có 3 thẻ chiến thuật (mỗi thẻ dùng 1 lần)','Thẻ Chi viện: Hỏi ý kiến chuyên gia BOD (20 giây)','Thẻ Nhân bản: Dùng trước khi xem câu → Đúng ×2, Sai −điểm gói','Thẻ Dịch chuyển: Chuyển câu sang đội khác (xem chi tiết khi dùng)'] },
+};
+
+/* ══════════════════════════════════════════════════════════ STATE ════ */
+const G = {
+  teams: ['Đội 1','Đội 2','Đội 3','Đội 4','Đội 5'],
+  scores: [0,0,0,0,0],
+  round: 0, qIdx: 0, timerID: null, timeLeft: 0, timeDur: 0,
+  pending: [null,null,null,null,null],
+  r3TeamIdx: 0, r3QInTurn: 0, r3Diff: null, r3NhanBan: false, r3Transfer: null,
+  r3Order: [0,1,2,3,4],
+  cards: [],
+  screen: 'setup', curQ: null, timerEndsAt: null, revealed: false,  // đồng bộ sang scorer
+};
+
+/* ══════════════════════════════════════════════════════════ SETUP ════ */
+function initSetup(){
+  const grid = document.getElementById('setup-grid');
+  grid.innerHTML = '';
+  for(let i=0;i<5;i++){
+    grid.innerHTML += `
+      <div class="team-card">
+        ${teamBadge(i,44)}
+        <label>Đội ${i+1}</label>
+        <input type="text" id="ti${i}" value="${G.teams[i]}" placeholder="Tên đội ${i+1}" maxlength="20">
+      </div>`;
+  }
+}
+
+function startGame(){
+  for(let i=0;i<5;i++){ G.teams[i] = (document.getElementById(`ti${i}`).value.trim()) || `Đội ${i+1}`; }
+  G.scores = [0,0,0,0,0];
+  G.cards = G.teams.map(()=>({chiVien:1,nhanBan:1,dichChuyen:1}));
+  Sync.push('scores:set', {scores:[0,0,0,0,0]});
+  showRoundIntro(1);
+}
+
+function restart(){
+  G.round=0; G.qIdx=0; G.r3TeamIdx=0; G.r3QInTurn=0; G.r3Diff=null;
+  G.r3NhanBan=false; G.r3Transfer=null; G.scores=[0,0,0,0,0];
+  G.cards = G.teams.map(()=>({chiVien:1,nhanBan:1,dichChuyen:1}));
+  Sync.push('scores:set', {scores:[0,0,0,0,0]});
+  showS('s-setup'); initSetup();
+}
+
+/* ══════════════════════════════════════════════════════════ SCREENS ══ */
+function showS(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  G.screen = id.replace('s-','');
+  syncFlow();
+}
+
+/* ══════════════════════════════════════════════════════════ INTRO ════ */
+function showRoundIntro(round){
+  G.round = round;
+  const cfg = ROUND_CFG[round];
+  document.getElementById('intro-vong').textContent = cfg.badge;
+  document.getElementById('intro-num').textContent  = cfg.num;
+  document.getElementById('intro-name').textContent = cfg.name;
+  document.getElementById('intro-desc').textContent = cfg.desc;
+  document.getElementById('intro-rules').innerHTML  = cfg.rules.map(r=>`<li>${ic('chevron-right',16)}<span>${r}</span></li>`).join('');
+  ['intro-vong','intro-num','intro-name','intro-desc','.intro-rules-box','.btn-enter'].forEach(sel=>{
+    const el = sel.startsWith('.')?document.querySelector(sel):document.getElementById(sel);
+    if(!el)return; el.style.animation='none'; el.offsetHeight; el.style.animation='';
+  });
+  showS('s-intro');
+}
+
+function enterRound(){
+  if(G.round===1) startR1();
+  else if(G.round===2) startR2();
+  else startR3();
+}
+
+function endRound(){
+  const nextRound = G.round + 1;
+  if(nextRound > 3){ goResults(); return; }
+  const names = {1:'Vòng 2 – Cộng Hưởng', 2:'Vòng 3 – Đột Phá'}[G.round];
+  if(!confirm(`Kết thúc vòng ${G.round} và chuyển sang ${names}?`)) return;
+  stopTimer();
+  showRoundIntro(nextRound);
+}
+
+/* ══════════════════════════════════════════════════════════ ROUND 1 ══ */
+function startR1(){
+  G.qIdx=0;
+  hide('r3bar'); hide('btn-diff'); hide('btn-cards');
+  showS('s-game');
+  renderQ1(0); renderScores();
+}
+function renderQ1(i){
+  const q = Q.r1[i];
+  resetQState();
+  document.getElementById('ghdr-round').textContent = 'VÒNG 1 · DÒ SÓNG';
+  document.getElementById('ghdr-qcnt').textContent  = `CÂU ${i+1} / 15`;
+  setQHead(`CÂU HỎI ${pad(i+1)}`, q.text, q.opts, q.ans, q.type, null);
+  G.curQ.pts = 10;
+  syncFlow();
+}
+
+/* ══════════════════════════════════════════════════════════ ROUND 2 ══ */
+function startR2(){
+  G.qIdx=0;
+  hide('r3bar'); hide('btn-diff'); hide('btn-cards');
+  showS('s-game');
+  renderQ2(0); renderScores();
+}
+function renderQ2(i){
+  const q = Q.r2[i];
+  resetQState();
+  const diffLabels = {easy:'DỄ',medium:'TRUNG BÌNH',hard:'KHÓ'};
+  const diffClass  = {easy:'badge-easy',medium:'badge-mid',hard:'badge-hard'};
+  document.getElementById('ghdr-round').textContent = 'VÒNG 2 · CỘNG HƯỞNG';
+  document.getElementById('ghdr-qcnt').textContent  = `CÂU ${i+1} / 9`;
+  const db = document.getElementById('badge-diff');
+  db.style.display='inline-flex'; db.className = `badge ${diffClass[q.diff]}`; db.textContent = diffLabels[q.diff];
+  const pb = document.getElementById('badge-pts');
+  pb.style.display='inline-flex'; pb.textContent = `${q.pts} điểm`;
+  setQHead(`CÂU HỎI ${pad(i+1)}`, q.text, q.opts, q.ans, q.type, null);
+  G.curQ.pts = q.pts; G.curQ.diff = q.diff;
+  syncFlow();
+}
+
+/* ══════════════════════════════════════════════════════════ ROUND 3 ══ */
+function startR3(){
+  G.r3TeamIdx=0; G.r3QInTurn=0; G.r3Diff=null; G.r3NhanBan=false; G.r3Transfer=null;
+  show('r3bar'); show('btn-diff'); show('btn-cards');
+  showS('s-game'); renderScores();
+  updateR3Bar(); openDiffModal();
+}
+function updateR3Bar(){
+  const ti = G.r3Order[G.r3TeamIdx];
+  document.getElementById('r3-teampill').innerHTML = `${teamBadge(ti,22)}<span>${G.teams[ti]}</span>`;
+  document.getElementById('r3-qprog').textContent    = `Câu ${G.r3QInTurn+1} / 5`;
+  const dp = document.getElementById('r3-diffpill');
+  if(G.r3Diff){ dp.style.display='inline-flex'; dp.className=`r3-diffpill d${G.r3Diff}`; dp.textContent = {20:'DỄ • 20đ',30:'TB • 30đ',40:'KHÓ • 40đ'}[G.r3Diff]; }
+  else { dp.style.display='none'; }
+  renderCardsBar(); renderScores();
+}
+function renderCardsBar(){
+  const ti = G.r3Order[G.r3TeamIdx];
+  const c  = G.cards[ti];
+  document.getElementById('r3-cardsbar').innerHTML = `
+    <button class="r3cardbtn" onclick="doChiVien()" ${c.chiVien<=0?'disabled':''} title="Thẻ chi viện">${ic('users',14)} Chi viện (${c.chiVien})</button>
+    <button class="r3cardbtn" onclick="doNhanBan()" ${c.nhanBan<=0||G.r3NhanBan?'disabled':''} title="Thẻ nhân bản">${ic('copy',14)} Nhân bản (${c.nhanBan})</button>
+    <button class="r3cardbtn" onclick="openTransferM()" ${c.dichChuyen<=0?'disabled':''} title="Thẻ dịch chuyển">${ic('transfer',14)} Dịch chuyển (${c.dichChuyen})</button>`;
+}
+function renderQ3(){
+  if(!G.r3Diff) return;
+  const diff = G.r3Diff;
+  const ti   = G.r3Order[G.r3TeamIdx];
+  const q    = Q.r3[diff][ti][G.r3QInTurn];
+  resetQState();
+  document.getElementById('ghdr-round').textContent = 'VÒNG 3 · ĐỘT PHÁ';
+  document.getElementById('ghdr-qcnt').textContent  = `${G.teams[ti].toUpperCase()} — Câu ${G.r3QInTurn+1}/5`;
+  const db = document.getElementById('badge-diff');
+  db.style.display='inline-flex';
+  const dMap={20:['badge-easy','DỄ'],30:['badge-mid','TRUNG BÌNH'],40:['badge-hard','KHÓ']};
+  db.className = `badge ${dMap[diff][0]}`; db.textContent = dMap[diff][1];
+  const pb = document.getElementById('badge-pts');
+  pb.style.display='inline-flex';
+  pb.textContent = G.r3NhanBan ? `${diff}đ ×2 = ${diff*2}đ` : `${diff} điểm`;
+  document.getElementById('nban-bar').classList.toggle('vis', G.r3NhanBan);
+  setQHead(`CÂU HỎI ${pad(G.r3QInTurn+1)}`, q.text, q.opts, q.ans, q.type, null);
+  G.curQ.pts = diff;
+  updateR3Bar();
+  syncFlow();
+}
+
+/* ══════════════════════════════════════════════════════════ CARDS ════ */
+function openCardsModal(){
+  const ti = G.r3Order[G.r3TeamIdx];
+  const c  = G.cards[ti];
+  document.getElementById('m-cards-title').innerHTML = `${ic('layers',20)} Thẻ chiến thuật — ${G.teams[ti]}`;
+  document.getElementById('cardsgrid').innerHTML = `
+    <div class="ccard">
+      <div class="cc-icon">${ic('users',24)}</div>
+      <div class="cc-name">Thẻ Chi viện</div>
+      <div class="cc-desc">Hỏi ý kiến chuyên gia BOD trong 20 giây</div>
+      <div class="cc-count">${c.chiVien>0 ? c.chiVien+' lần' : '✗ Hết'}</div>
+      <button class="cc-btn" onclick="doChiVien();closeM('m-cards')" ${c.chiVien<=0?'disabled':''}>Dùng thẻ</button>
+    </div>
+    <div class="ccard">
+      <div class="cc-icon">${ic('copy',24)}</div>
+      <div class="cc-name">Thẻ Nhân bản</div>
+      <div class="cc-desc">Dùng trước khi xem câu. Đúng ×2, Sai −điểm</div>
+      <div class="cc-count">${c.nhanBan>0 ? (G.r3NhanBan?'Đang kích hoạt':c.nhanBan+' lần') : '✗ Hết'}</div>
+      <button class="cc-btn" onclick="doNhanBan();closeM('m-cards')" ${c.nhanBan<=0||G.r3NhanBan?'disabled':''}>Kích hoạt</button>
+    </div>
+    <div class="ccard">
+      <div class="cc-icon">${ic('transfer',24)}</div>
+      <div class="cc-name">Thẻ Dịch chuyển</div>
+      <div class="cc-desc">Chuyển quyền trả lời sang đội khác</div>
+      <div class="cc-count">${c.dichChuyen>0 ? c.dichChuyen+' lần' : '✗ Hết'}</div>
+      <button class="cc-btn" onclick="openTransferM();closeM('m-cards')" ${c.dichChuyen<=0?'disabled':''}>Dùng thẻ</button>
+    </div>`;
+  openM('m-cards');
+}
+function doChiVien(){
+  const ti = G.r3Order[G.r3TeamIdx];
+  if(G.cards[ti].chiVien<=0) return;
+  G.cards[ti].chiVien--;
+  renderCardsBar();
+  toast('Thẻ chi viện! Hỏi chuyên gia BOD trong 20 giây…','users');
+  startTimer(20);
+}
+function doNhanBan(){
+  const ti = G.r3Order[G.r3TeamIdx];
+  if(G.cards[ti].nhanBan<=0 || G.r3NhanBan) return;
+  G.cards[ti].nhanBan--; G.r3NhanBan = true;
+  renderCardsBar(); syncFlow();
+  document.getElementById('nban-bar').classList.add('vis');
+  const pb = document.getElementById('badge-pts');
+  if(G.r3Diff && pb.style.display!=='none'){ pb.textContent = `${G.r3Diff}đ ×2 = ${G.r3Diff*2}đ`; }
+  toast('Nhân bản kích hoạt! Trả lời đúng sẽ được ×2 điểm.','copy');
+}
+function openTransferM(){
+  const ti = G.r3Order[G.r3TeamIdx];
+  const c  = G.cards[ti];
+  if(c.dichChuyen<=0) return;
+  const targets = document.getElementById('transfer-targets');
+  targets.innerHTML = '';
+  G.teams.forEach((name,i)=>{
+    if(i===ti) return;
+    const btn = document.createElement('button');
+    btn.className='tfbtn';
+    btn.innerHTML = `${teamBadge(i,28)}<span>${name}</span><span class="tf-pts">${G.scores[i]}đ</span>`;
+    btn.onclick = ()=>doTransfer(i);
+    targets.appendChild(btn);
+  });
+  openM('m-transfer');
+}
+function doTransfer(targetIdx){
+  const ti = G.r3Order[G.r3TeamIdx];
+  G.cards[ti].dichChuyen--; G.r3Transfer = targetIdx; G.r3NhanBan  = false;
+  closeM('m-transfer'); renderCardsBar(); syncFlow();
+  document.getElementById('nban-bar').classList.remove('vis');
+  toast(`Đã chuyển câu sang ${G.teams[targetIdx]}! Chấm điểm đội đó.`,'transfer');
+  renderScores();
+}
+
+/* ══════════════════════════════════════════════════════════ DIFF ═════ */
+function openDiffModal(){
+  const ti = G.r3Order[G.r3TeamIdx];
+  document.getElementById('m-diff-title').innerHTML = `${ic('target',20)} ${G.teams[ti]} — Chọn gói câu hỏi`;
+  document.querySelectorAll('.diffcard').forEach(c=>{ c.classList.remove('sel-20','sel-30','sel-40'); });
+  openM('m-diff');
+}
+function pickDiff(pts){
+  G.r3Diff = pts; G.r3NhanBan = false; G.r3Transfer = null;
+  closeM('m-diff');
+  document.getElementById('nban-bar').classList.remove('vis');
+  renderQ3();
+  toast(`Gói ${pts} điểm được chọn!`,'target');
+}
+
+/* ══════════════════════════════════════════════════════════ TIMER ════ */
+const CIRC = 207;
+function startTimer(sec){
+  stopTimer();
+  G.timeLeft = sec; G.timeDur = sec;
+  G.timerEndsAt = Date.now() + sec*1000; syncFlow();   // scorer tự đếm ngược theo endsAt
+  updateTimer(sec, sec);
+  G.timerID = setInterval(()=>{
+    G.timeLeft--; updateTimer(G.timeLeft, G.timeDur);
+    if(G.timeLeft<=0){ stopTimer(); toast('Hết giờ!','clock'); }
+  }, 1000);
+}
+function stopTimer(){
+  if(G.timerID){ clearInterval(G.timerID); G.timerID=null; }
+  if(G.timerEndsAt){ G.timerEndsAt=null; syncFlow(); }
+}
+function updateTimer(left, total){
+  const tval = document.getElementById('tval');
+  const ring  = document.getElementById('ring');
+  tval.textContent = left<=0 ? '0' : left;
+  const offset = total>0 ? CIRC*(1-(left/total)) : 0;
+  ring.style.strokeDashoffset = offset;
+  const danger = left<=3 && left>0;
+  ring.classList.toggle('danger', danger);
+  tval.classList.toggle('danger', danger);
+}
+
+/* ══════════════════════════════════════════════════════════ REVEAL ═══ */
+/* Tìm chỉ số lựa chọn đúng từ đáp án trong bộ câu hỏi:
+   chấp nhận "A" / "A. Hà Nội" / "A) ..." hoặc nguyên văn nội dung lựa chọn. */
+function correctOptIdx(opts, ans){
+  if(!ans || !opts || !opts.length) return -1;
+  const a = ans.trim();
+  const m = a.match(/^([A-Da-d])(?:[\s.:)\-]|$)/);
+  if(m) return 'ABCD'.indexOf(m[1].toUpperCase());
+  const norm = s => (s||'').replace(/^[A-Da-d][\s.:)\-]+/,'').trim().toLowerCase();
+  const an = norm(a);
+  if(!an) return -1;
+  return opts.findIndex(o => norm(o)===an);
+}
+function revealAns(){
+  document.getElementById('ans-box').classList.add('vis');
+  const idx = correctOptIdx(G.curOpts, G.curAns);
+  if(idx >= 0){
+    const el = document.getElementById('opt'+idx);
+    if(el) el.classList.add('correct');
+  }
+  stopTimer();
+  G.revealed = true; syncFlow();
+}
+
+/* ══════════════════════════════════════════════════════════ SCORING ══ */
+function openScoreModal(){
+  const isR3 = G.round===3;
+  const ti   = isR3 ? G.r3Order[G.r3TeamIdx] : -1;
+  const tgt  = G.r3Transfer;
+  let showTeams;
+  if(!isR3){ showTeams = G.teams.map((_,i)=>i); }
+  else if(tgt!==null){ showTeams = [tgt]; }
+  else { showTeams = [ti]; }
+  let titleExtra = '';
+  if(isR3 && tgt!==null) titleExtra = ` → ${G.teams[tgt]} trả lời`;
+  document.getElementById('m-score-title').innerHTML = `${ic('clipboard-check',20)} Chấm điểm${titleExtra}`;
+  const grid = document.getElementById('scgrid');
+  grid.innerHTML='';
+  showTeams.forEach(i=>{
+    const pend = G.pending[i];
+    const row  = document.createElement('div');
+    row.className='scrow'; row.dataset.ti=i;
+    row.innerHTML=`
+      ${teamBadge(i,30)}
+      <span class="sc-name">${G.teams[i]}</span>
+      <span class="sc-pts">${G.scores[i]}đ</span>
+      <div class="scbtns">
+        <button class="sbtn sb-ok ${pend==='ok'?'act-ok':''}" onclick="setPend(${i},'ok')">${ic('check',14)} Đúng</button>
+        <button class="sbtn sb-ng ${pend==='ng'?'act-ng':''}" onclick="setPend(${i},'ng')">${ic('x',14)} Sai</button>
+        <button class="sbtn sb-no ${pend==='no'?'act-no':''}" onclick="setPend(${i},'no')">${ic('minus',14)} Bỏ</button>
+      </div>`;
+    grid.appendChild(row);
+  });
+  openM('m-score');
+}
+function setPend(ti, result){
+  G.pending[ti] = result;
+  document.querySelectorAll(`.scrow[data-ti="${ti}"] .sbtn`).forEach((btn,idx)=>{
+    const states = ['ok','ng','no'];
+    btn.classList.toggle(`act-${states[idx]}`, result===states[idx]);
+  });
+}
+function applyScores(){
+  /* quy tắc chấm dùng chung với score.html (sync.js). Áp cục bộ ngay
+     (optimistic) rồi gửi DELTA lên server — server cộng dồn tuần tự nên
+     không đè mất điểm scorer vừa chấm; bản chuẩn về lại qua onSyncState. */
+  const deltas = computeScoreDeltas(buildFlow(), [...G.pending]);
+  G.scores = G.scores.map((s,i)=>Math.max(0, s+deltas[i]));
+  if(G.round===3){ G.r3NhanBan=false; G.r3Transfer=null; syncFlow(); }
+  closeM('m-score'); renderScores(deltas);
+  Sync.push('adjust', {deltas}).then(ok=>{
+    if(!ok) toast('Mất kết nối — điểm mới chỉ lưu trên máy này!','wifi-off');
+  });
+  toast('Đã cập nhật điểm!','check');
+}
+
+/* ══════════════════════════════════════════════════════════ NEXT ═════ */
+function nextQ(){
+  stopTimer(); clearQDisplay();
+  if(G.round===1){
+    G.qIdx++;
+    if(G.qIdx>=15){ showRoundIntro(2); } else { renderQ1(G.qIdx); }
+  } else if(G.round===2){
+    G.qIdx++;
+    if(G.qIdx>=9){ showRoundIntro(3); } else { renderQ2(G.qIdx); }
+  } else if(G.round===3){
+    G.r3NhanBan=false; G.r3Transfer=null; G.r3QInTurn++;
+    if(G.r3QInTurn>=5){
+      G.r3TeamIdx++; G.r3QInTurn=0; G.r3Diff=null;
+      if(G.r3TeamIdx>=5){ goResults(); }
+      else { updateR3Bar(); blankQ(`Chuẩn bị cho ${G.teams[G.r3Order[G.r3TeamIdx]]}!`); openDiffModal(); }
+    } else { renderQ3(); }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════ PREV ═════ */
+function prevQ(){
+  stopTimer(); clearQDisplay();
+  if(G.round===1){
+    if(G.qIdx<=0){ toast('Đang ở câu đầu tiên của vòng','arrow-left'); return; }
+    G.qIdx--; renderQ1(G.qIdx);
+  } else if(G.round===2){
+    if(G.qIdx<=0){ toast('Đang ở câu đầu tiên của vòng','arrow-left'); return; }
+    G.qIdx--; renderQ2(G.qIdx);
+  } else if(G.round===3){
+    if(!G.r3Diff){ toast('Chưa vào gói câu hỏi','arrow-left'); return; }
+    if(G.r3QInTurn<=0){ toast('Đang ở câu đầu tiên của lượt này','arrow-left'); return; }
+    G.r3NhanBan=false; G.r3Transfer=null; G.r3QInTurn--;
+    renderQ3();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════ SCOREBOARD */
+function renderScores(deltas){
+  const sorted = G.teams.map((n,i)=>({n,s:G.scores[i],i}))
+                         .sort((a,b)=>b.s-a.s);
+  const curturn = G.round===3 ? G.r3Order[G.r3TeamIdx] : -1;
+  document.getElementById('slist').innerHTML = sorted.map((t,rank)=>`
+    <div class="scard ${rank===0?'leader':''} ${t.i===curturn?'curturn':''}">
+      <div class="srank">${rank+1}</div>
+      ${teamBadge(t.i,32)}
+      <div class="sinfo">
+        <div class="sname">${t.n}</div>
+        <div class="spts">${t.s}</div>
+      </div>
+      ${deltas && deltas[t.i]!==0 ? `<div class="sdelta show ${deltas[t.i]>0?'pos':'neg'}">${deltas[t.i]>0?'+':''}${deltas[t.i]}</div>` : '<div class="sdelta"></div>'}
+    </div>`).join('');
+  if(deltas) setTimeout(()=>renderScores(), 2500);
+}
+
+/* ══════════════════════════════════════════════════════════ RESULTS ══ */
+function goResults(){
+  stopTimer();
+  const sorted = G.teams.map((n,i)=>({n,s:G.scores[i],i}))
+                         .sort((a,b)=>b.s-a.s);
+  const rcls   = ['r1','r2','r3','',''];
+  document.getElementById('res-podium').innerHTML = sorted.map((t,i)=>`
+    <div class="resrow ${rcls[i]}">
+      <div class="res-rank">${i+1}</div>
+      ${teamBadge(t.i,34)}
+      <div class="res-info"><div class="res-name">${t.n}</div></div>
+      <div class="res-pts">${t.s} điểm</div>
+    </div>`).join('');
+  showS('s-results');
+}
+
+/* ══════════════════════════════════════════════════════════ HELPERS ══ */
+function setQHead(num, text, opts, ans, type, diff){
+  document.getElementById('qnum').textContent = num;
+  document.getElementById('qtxt').textContent = text;
+  document.getElementById('badge-type').textContent = type==='mc' ? 'TRẮC NGHIỆM' : 'TỰ LUẬN';
+  /* tự luận không hiện ô lựa chọn; bỏ lựa chọn trống (data từ admin) */
+  const shown = (type==='mc' ? opts : []).filter(o=>o && o.trim());
+  const letters = ['A','B','C','D'];
+  document.getElementById('opts').innerHTML = shown.map((o,i)=>{
+    const hasPrefix = /^[A-Da-d][\s.:)\-]/.test(o.trim());
+    return `<div class="opt" id="opt${i}">${hasPrefix ? o : letters[i]+'. '+o}</div>`;
+  }).join('');
+  G.curOpts = shown; G.curAns = ans;   /* dùng cho revealAns() tô màu đáp án đúng */
+  G.curQ = {num, text, opts: shown, ans, type};   /* công bố sang scorer qua syncFlow() */
+  document.getElementById('ans-txt').textContent = ans;
+  if(!diff){ document.getElementById('badge-diff').style.display='none'; }
+  document.getElementById('badge-pts').style.display='none';
+}
+function resetQState(){
+  G.pending = [null,null,null,null,null];
+  G.revealed = false;
+  document.getElementById('ans-box').classList.remove('vis');
+  document.getElementById('nban-bar').classList.remove('vis');
+  document.getElementById('badge-diff').style.display='none';
+  document.getElementById('badge-pts').style.display='none';
+  document.getElementById('tval').textContent='--';
+  document.getElementById('tval').classList.remove('danger');
+  document.getElementById('ring').style.strokeDashoffset='0';
+  document.getElementById('ring').classList.remove('danger');
+  stopTimer();
+}
+function clearQDisplay(){
+  G.pending = [null,null,null,null,null];
+  G.revealed = false;
+  document.getElementById('ans-box').classList.remove('vis');
+  document.getElementById('nban-bar').classList.remove('vis');
+  stopTimer();
+}
+function blankQ(msg){
+  G.curQ = null; G.revealed = false; syncFlow();
+  document.getElementById('qnum').textContent = '—';
+  document.getElementById('qtxt').textContent = msg;
+  document.getElementById('opts').innerHTML   = '';
+  document.getElementById('badge-diff').style.display='none';
+  document.getElementById('badge-pts').style.display='none';
+  document.getElementById('ans-box').classList.remove('vis');
+  document.getElementById('nban-bar').classList.remove('vis');
+  document.getElementById('tval').textContent='--';
+  document.getElementById('ring').style.strokeDashoffset='0';
+}
+function openM(id){ document.getElementById(id).classList.add('open') }
+function closeM(id){ document.getElementById(id).classList.remove('open') }
+function show(id){ document.getElementById(id).style.display='' }
+function hide(id){ document.getElementById(id).style.display='none' }
+function pad(n){ return String(n).padStart(2,'0') }
+
+let toastTimer;
+function toast(msg, iconName){
+  const el = document.getElementById('toast');
+  el.innerHTML = (iconName?ic(iconName,18):'') + `<span>${msg}</span>`;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2700);
+}
+
+/* ══════════════════════════════════════════════════════════ KEYBOARD ═ */
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  if(document.querySelector('.moverlay.open')) return;
+  if(e.code==='Space'){
+    e.preventDefault();
+    const type=document.getElementById('badge-type').textContent;
+    startTimer(type==='TRẮC NGHIỆM'?10:15);
+    toast('Timer bắt đầu! (Space)','clock');
+  }
+  if(e.code==='KeyR') revealAns();
+  if(e.code==='KeyN') nextQ();
+  if(e.code==='KeyP') prevQ();
+});
+
+/* ══════════════════════════════════════════════════════════ STATIC ICONS */
+function paintStaticIcons(){
+  const set=(id,name,sz)=>{const el=document.getElementById(id);if(el)el.innerHTML=ic(name,sz||16);};
+  set('ic-start','play',18); set('ic-enter','arrow-right',18);
+  set('ic-nban','zap',16); set('ic-anschk','check',14);
+  set('ic-reveal','search',16); set('ic-score','clipboard-check',16); set('ic-next','arrow-right',16);
+  set('ic-prev','arrow-left',16);
+  set('ic-board','bar-chart',16); set('ic-stop','square',14);
+  set('ic-apply','check',16); set('ic-restart','rotate-ccw',16);
+  document.querySelectorAll('.ic-clock').forEach(el=>el.innerHTML=ic('clock',14));
+  document.getElementById('res-trophy').innerHTML=ic('trophy',30);
+  document.getElementById('btn-diff').innerHTML   = ic('target',14)+' Chọn gói';
+  document.getElementById('btn-cards').innerHTML  = ic('layers',14)+' Thẻ chiến thuật';
+  document.getElementById('btn-endround').innerHTML = ic('skip-forward',14)+' Kết thúc vòng';
+  document.getElementById('btn-finish').innerHTML = ic('trophy',14)+' Kết thúc';
+}
+
+/* ══════════════════════════════════════════════════════════ INIT ═════ */
+(async()=>{
+  const overlay = document.createElement('div');
+  overlay.id = 'boot-overlay';
+  overlay.style.cssText = `position:fixed;inset:0;z-index:9999;background:var(--bg-1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-family:var(--font-sans)`;
+  overlay.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px"><img src="assets/cf-mark.svg" width="40" height="40" alt=""><span style="font-size:20px;font-weight:900;letter-spacing:-.02em;color:var(--fg-1);font-family:var(--font-disp-sans)">Who's the Millionaire</span></div>
+    <div style="font-size:13px;color:var(--fg-2)">Đang tải câu hỏi từ server…</div>
+    <div style="width:200px;height:4px;background:var(--border-1);border-radius:2px;overflow:hidden"><div style="width:60%;height:100%;background:var(--cf-blue);border-radius:2px;animation:bload 1.2s ease-in-out infinite alternate"></div></div>
+    <style>@keyframes bload{from{width:20%}to{width:80%}}</style>`;
+  document.body.appendChild(overlay);
+  paintStaticIcons();
+  applyQuestions(await Sync.loadQuestions());
+  Sync.init({
+    role: 'game',
+    onState: onSyncState,
+    onQuestions: p => { applyQuestions(p); toast('Câu hỏi đã được cập nhật từ Admin!','download'); },
+    onPresence: updatePresence,
+  });
+  overlay.style.opacity='0'; overlay.style.transition='opacity .4s';
+  setTimeout(()=>overlay.remove(), 400);
+  initSetup();
+})();
+</script>
+</body>
+</html>
