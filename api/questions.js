@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'questions.json');
+const DATA_FILE = path.join(__dirname, '..', 'data', 'questions.json');
 
 let _kv = undefined;
 function getKV() {
