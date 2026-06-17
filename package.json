@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/thuc248997/who-the-millionaire#readme",
   "dependencies": {
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "@vercel/kv": "^3.0.0"
   }
 }
