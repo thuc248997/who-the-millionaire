@@ -3,8 +3,8 @@ const DEFAULT = { v: 0, flow: null, scores: [0, 0, 0, 0, 0] };
 let _kv = undefined;
 function getKV() {
   if (_kv !== undefined) return _kv;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) { _kv = null; return null; }
   try {
     const { Redis } = require('@upstash/redis');
