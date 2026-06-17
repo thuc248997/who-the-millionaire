@@ -1,10 +1,20 @@
-const { Redis } = require('@upstash/redis');
-const kv = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
-
 const DEFAULT = { v: 0, flow: null, scores: [0, 0, 0, 0, 0] };
+
+let _kv = undefined;
+function getKV() {
+  if (_kv !== undefined) return _kv;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) { _kv = null; return null; }
+  try {
+    const { Redis } = require('@upstash/redis');
+    _kv = new Redis({ url, token });
+  } catch (e) {
+    console.error('Redis init error:', e.message);
+    _kv = null;
+  }
+  return _kv;
+}
 
 function applyStateUpdate(cur, kind, payload) {
   const next = { ...cur, v: cur.v + 1 };
@@ -26,17 +36,34 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
+  const redis = getKV();
+
   if (req.method === 'GET') {
-    const state = (await kv.get('game:state')) || DEFAULT;
-    return res.json(state);
+    if (redis) {
+      try {
+        const state = await redis.get('game:state');
+        return res.json(state || DEFAULT);
+      } catch (e) {
+        console.error('Redis GET state error:', e.message);
+      }
+    }
+    return res.json(DEFAULT);
   }
 
   if (req.method === 'POST') {
-    const { kind, ...payload } = req.body;
-    const cur = (await kv.get('game:state')) || DEFAULT;
-    const next = applyStateUpdate(cur, kind, payload);
-    await kv.set('game:state', next);
-    return res.json(next);
+    if (!redis) {
+      return res.status(503).json({ ok: false, error: 'REDIS_NOT_CONFIGURED' });
+    }
+    try {
+      const { kind, ...payload } = req.body;
+      const cur = (await redis.get('game:state')) || DEFAULT;
+      const next = applyStateUpdate(cur, kind, payload);
+      await redis.set('game:state', next);
+      return res.json(next);
+    } catch (e) {
+      console.error('Redis POST state error:', e.message);
+      return res.status(503).json({ ok: false, error: e.message });
+    }
   }
 
   res.status(405).end('Method Not Allowed');
