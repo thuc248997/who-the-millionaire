@@ -180,6 +180,16 @@ textarea{line-height:1.5;min-height:64px}
 
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+/* ── EMPTY SLOT (drop-ready) ── */
+.qcard.empty-slot{border-style:dashed;border-color:var(--border-2);background:transparent;padding:12px 18px;display:flex;align-items:center;cursor:pointer;min-height:52px;transition:border-color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast)}
+.qcard.empty-slot:hover,.qcard.empty-slot.drop-hover{border-color:var(--cf-blue);background:var(--accent-soft)}
+.qcard.empty-slot.drop-hover{box-shadow:var(--shadow-focus)}
+.slot-drop-hint{flex:1;display:flex;align-items:center;gap:8px;color:var(--fg-3);font-size:12px;font-weight:600;padding:0 12px}
+.slot-or{font-size:11px;font-weight:500;color:var(--fg-3);margin-left:6px;white-space:nowrap}
+/* ── CLEAR BUTTON on filled cards ── */
+.clear-card-btn{display:grid;place-items:center;width:24px;height:24px;border:none;background:none;color:var(--fg-3);cursor:pointer;border-radius:var(--radius-sm);flex-shrink:0;margin-left:auto;transition:color var(--dur-fast),background var(--dur-fast)}
+.clear-card-btn:hover{color:var(--danger);background:var(--danger-soft)}
+.clear-card-btn+.fill-indicator{margin-left:6px}
 </style>
 </head>
 <body>
@@ -478,18 +488,30 @@ function toggleTeam(tab, ti){
 
 function cardHTML(tab, team, idx, q, label){
   const filled=isFilled(q);
+  const hasContent=q.text.trim().length>0;
   const isMC=q.type!=='written';
   const opts=q.opts||['','','',''];
   const teamAttr = team!==null ? `data-team="${team}"` : '';
   const cardId = team!==null ? `card-${tab}-${team}-${idx}` : `card-${tab}-${idx}`;
+  const dropAttrs=`data-drop-tab="${tab}" data-drop-team="${team===null?'':team}" data-drop-idx="${idx}"`;
+
+  if(!hasContent && !expandedSlots.has(cardId)){
+    return `
+  <div class="qcard empty-slot" id="${cardId}" ${dropAttrs} onclick="expandEmptySlot('${cardId}')">
+    <span class="qnum">${label}</span>
+    <span class="slot-drop-hint">${ic('move',13)} Kéo câu hỏi từ ngân hàng vào đây<span class="slot-or">hoặc nhấn để nhập</span></span>
+  </div>`;
+  }
+
   return `
-  <div class="qcard ${filled?'filled':''}" id="${cardId}" data-drop-tab="${tab}" data-drop-team="${team===null?'':team}" data-drop-idx="${idx}">
+  <div class="qcard ${filled?'filled':''}" id="${cardId}" ${dropAttrs}>
     <div class="qcard-hdr">
       <span class="qnum">${label}</span>
       <div class="type-toggle">
         <button class="type-btn ${isMC?'active':''}"  onclick="setType('${tab}',${team},${idx},'mc')">Trắc nghiệm</button>
         <button class="type-btn ${!isMC?'active':''}" onclick="setType('${tab}',${team},${idx},'written')">Tự luận</button>
       </div>
+      <button class="clear-card-btn" onclick="clearCard('${tab}',${team},${idx})" title="Xóa câu hỏi khỏi ô này">${ic('x',14)}</button>
       <div class="fill-indicator"></div>
     </div>
     <div class="field">
@@ -585,6 +607,7 @@ function getQ(tab, team, idx){
    Cột nhận dạng linh hoạt theo header: Câu hỏi | Loại | A B C D | Đáp án.
    Không có header → mặc định thứ tự cột: text, A, B, C, D, đáp án, loại. */
 let draggingBid=null;
+const expandedSlots=new Set();
 
 function importExcel(input){
   const file=input.files[0]; if(!file) return;
@@ -713,6 +736,28 @@ function dropOnCard(card, bid){
   bq.used=true;
   schedSave(); renderMain(); renderBank();
   toast('Đã gán câu hỏi vào '+card.querySelector('.qnum').textContent,'check');
+}
+
+function expandEmptySlot(cardId){
+  expandedSlots.add(cardId);
+  renderMain();
+  setTimeout(()=>{
+    const ta=document.querySelector('#'+cardId+' textarea[data-field="text"]');
+    if(ta) ta.focus();
+  },20);
+}
+
+function clearCard(tab,team,idx){
+  const q=getQ(tab,team,idx); if(!q) return;
+  const oldText=q.text.trim();
+  if(oldText){
+    const bitem=(Q.bank||[]).find(b=>b.used&&b.text.trim()===oldText);
+    if(bitem) bitem.used=false;
+  }
+  q.text=''; q.opts=['','','','']; q.ans='';
+  const cardId=team!==null?`card-${tab}-${team}-${idx}`:`card-${tab}-${idx}`;
+  expandedSlots.delete(cardId);
+  schedSave(); renderMain(); renderBank();
 }
 
 function deleteBankSet(src){
