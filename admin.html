@@ -305,11 +305,13 @@ async function loadData(){
     const p = await res.json();
     if(!p){ setSaveStatus('saved'); return emptyQ(); }
     const base = emptyQ();
-    if(p.r1) base.r1 = p.r1.map((q,i)=>({...base.r1[i],...q}));
-    if(p.r2) base.r2 = p.r2.map((q,i)=>({...base.r2[i],...q}));
+    if(p.r1) base.r1 = base.r1.map((q,i)=>({...q,...(p.r1[i]||{})}));
+    if(p.r2) base.r2 = base.r2.map((q,i)=>({...q,...(p.r2[i]||{})}));
     if(p.r3){
       [20,30,40].forEach(k=>{
-        if(p.r3[k]) base.r3[k] = p.r3[k].map((teamArr,ti)=>(teamArr||[]).map((q,qi)=>({...base.r3[k][ti][qi],...q})));
+        if(p.r3[k]) base.r3[k] = base.r3[k].map((teamArr,ti)=>
+          teamArr.map((q,qi)=>({...q,...((p.r3[k][ti]||[])[qi]||{})}))
+        );
       });
     }
     if(Array.isArray(p.bank)) base.bank = p.bank;
@@ -796,11 +798,13 @@ function importJSON(input){
     try{
       const p=JSON.parse(e.target.result);
       const base=emptyQ();
-      if(p.r1) base.r1=p.r1.map((q,i)=>({...base.r1[i],...q}));
-      if(p.r2) base.r2=p.r2.map((q,i)=>({...base.r2[i],...q}));
+      if(p.r1) base.r1=base.r1.map((q,i)=>({...q,...(p.r1[i]||{})}));
+      if(p.r2) base.r2=base.r2.map((q,i)=>({...q,...(p.r2[i]||{})}));
       if(p.r3){
         [20,30,40].forEach(k=>{
-          if(p.r3[k]) base.r3[k]=p.r3[k].map((t,ti)=>(t||[]).map((q,qi)=>({...base.r3[k][ti][qi],...q})));
+          if(p.r3[k]) base.r3[k]=base.r3[k].map((teamArr,ti)=>
+            teamArr.map((q,qi)=>({...q,...((p.r3[k][ti]||[])[qi]||{})}))
+          );
         });
       }
       base.bank = Array.isArray(p.bank) ? p.bank : (Q.bank||[]);
