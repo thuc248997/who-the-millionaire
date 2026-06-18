@@ -181,9 +181,14 @@ function onState(st){
   if(st.flow !== undefined){
     S.flow = st.flow;
     const key = ctxKeyOf(st.flow);
-    if(key !== S.ctxKey){ S.ctxKey = key; S.marks = [null,null,null,null,null]; }
+    if(key !== S.ctxKey){
+      S.ctxKey = key;
+      S.marks = [null,null,null,null,null];
+      if(S.flow.screen === 'setup') Object.keys(manualVals).forEach(k=>delete manualVals[k]);
+    }
   }
-  render(deltas && deltas.some(d=>d) ? deltas : undefined);
+  const isReset = S.flow && S.flow.screen === 'setup';
+  render(!isReset && deltas && deltas.some(d=>d) ? deltas : undefined);
 }
 
 /* ══════════════════════════════════════════════════════════ RENDER ═══ */

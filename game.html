@@ -671,19 +671,19 @@ function initSetup(){
   }
 }
 
-function startGame(){
+async function startGame(){
   for(let i=0;i<5;i++){ G.teams[i] = (document.getElementById(`ti${i}`).value.trim()) || `Đội ${i+1}`; }
   G.scores = [0,0,0,0,0];
   G.cards = G.teams.map(()=>({chiVien:1,nhanBan:1,dichChuyen:1}));
-  Sync.push('scores:set', {scores:[0,0,0,0,0]});
+  await Sync.push('scores:set', {scores:[0,0,0,0,0]});
   showRoundIntro(1);
 }
 
-function restart(){
+async function restart(){
   G.round=0; G.qIdx=0; G.r3TeamIdx=0; G.r3QInTurn=0; G.r3Diff=null;
   G.r3NhanBan=false; G.r3Transfer=null; G.scores=[0,0,0,0,0];
   G.cards = G.teams.map(()=>({chiVien:1,nhanBan:1,dichChuyen:1}));
-  Sync.push('scores:set', {scores:[0,0,0,0,0]});
+  await Sync.push('scores:set', {scores:[0,0,0,0,0]});
   showS('s-setup'); initSetup();
 }
 
