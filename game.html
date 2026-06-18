@@ -681,10 +681,15 @@ async function startGame(){
 
 async function restart(){
   G.round=0; G.qIdx=0; G.r3TeamIdx=0; G.r3QInTurn=0; G.r3Diff=null;
-  G.r3NhanBan=false; G.r3Transfer=null; G.scores=[0,0,0,0,0];
+  G.r3NhanBan=false; G.r3Transfer=null; G.scores=[0,0,0,0,0]; G.screen='setup';
   G.cards = G.teams.map(()=>({chiVien:1,nhanBan:1,dichChuyen:1}));
-  await Sync.push('scores:set', {scores:[0,0,0,0,0]});
-  showS('s-setup'); initSetup();
+  clearTimeout(flowTimer);
+  // Show setup screen locally without triggering a second syncFlow
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-setup').classList.add('active');
+  // Single atomic push: reset scores=0 AND flow=setup in one round-trip
+  await Sync.push('newgame', {flow: buildFlow()});
+  initSetup();
 }
 
 /* ══════════════════════════════════════════════════════════ SCREENS ══ */
@@ -982,18 +987,17 @@ function openScoreModal(){
   openM('m-score');
 }
 function setPend(ti, result){
-  G.pending[ti] = result;
+  G.pending[ti] = (G.pending[ti] === result) ? null : result;
   document.querySelectorAll(`.scrow[data-ti="${ti}"] .sbtn`).forEach((btn,idx)=>{
     const states = ['ok','ng','no'];
-    btn.classList.toggle(`act-${states[idx]}`, result===states[idx]);
+    btn.classList.toggle(`act-${states[idx]}`, G.pending[ti]===states[idx]);
   });
 }
 function applyScores(){
-  /* quy tắc chấm dùng chung với score.html (sync.js). Áp cục bộ ngay
-     (optimistic) rồi gửi DELTA lên server — server cộng dồn tuần tự nên
-     không đè mất điểm scorer vừa chấm; bản chuẩn về lại qua onSyncState. */
   const deltas = computeScoreDeltas(buildFlow(), [...G.pending]);
+  if(!deltas.some(d=>d)){ toast('Chưa có thay đổi điểm nào','minus'); return; }
   G.scores = G.scores.map((s,i)=>Math.max(0, s+deltas[i]));
+  G.pending = [null,null,null,null,null];
   if(G.round===3){ G.r3NhanBan=false; G.r3Transfer=null; syncFlow(); }
   closeM('m-score'); renderScores(deltas);
   Sync.push('adjust', {deltas}).then(ok=>{

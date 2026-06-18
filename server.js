@@ -145,6 +145,9 @@ function applyStateUpdate(cur, kind, payload) {
     next.flow = payload.flow ?? null;
   } else if (kind === 'scores:set') {
     next.scores = (payload.scores || [0,0,0,0,0]).map(s => Math.max(0, Number(s) || 0));
+  } else if (kind === 'newgame') {
+    next.scores = [0, 0, 0, 0, 0];
+    next.flow = payload.flow ?? null;
   } else if (kind === 'adjust') {
     const deltas = payload.deltas || [];
     next.scores = cur.scores.map((s, i) => Math.max(0, s + (Number(deltas[i]) || 0)));
