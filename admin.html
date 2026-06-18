@@ -173,9 +173,23 @@ textarea{line-height:1.5;min-height:64px}
 .toast .ic{color:var(--cf-blue-400);flex:none}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 #file-import,#file-excel{display:none}
+/* storage banner */
+.storage-banner{display:none;align-items:center;gap:10px;padding:10px 20px;background:#FEF3C7;border-bottom:1px solid #F59E0B;font-size:13px;font-weight:600;color:#92400E}
+.storage-banner .ic{color:#D97706;flex:none}
+.storage-banner a{color:#92400E;font-weight:700;cursor:pointer;text-decoration:underline;background:none;border:none;font-size:13px;font-family:var(--font-sans)}
 
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+/* ── EMPTY SLOT (drop-ready) ── */
+.qcard.empty-slot{border-style:dashed;border-color:var(--border-2);background:transparent;padding:12px 18px;display:flex;align-items:center;cursor:pointer;min-height:52px;transition:border-color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast)}
+.qcard.empty-slot:hover,.qcard.empty-slot.drop-hover{border-color:var(--cf-blue);background:var(--accent-soft)}
+.qcard.empty-slot.drop-hover{box-shadow:var(--shadow-focus)}
+.slot-drop-hint{flex:1;display:flex;align-items:center;gap:8px;color:var(--fg-3);font-size:12px;font-weight:600;padding:0 12px}
+.slot-or{font-size:11px;font-weight:500;color:var(--fg-3);margin-left:6px;white-space:nowrap}
+/* ── CLEAR BUTTON on filled cards ── */
+.clear-card-btn{display:grid;place-items:center;width:24px;height:24px;border:none;background:none;color:var(--fg-3);cursor:pointer;border-radius:var(--radius-sm);flex-shrink:0;margin-left:auto;transition:color var(--dur-fast),background var(--dur-fast)}
+.clear-card-btn:hover{color:var(--danger);background:var(--danger-soft)}
+.clear-card-btn+.fill-indicator{margin-left:6px}
 </style>
 </head>
 <body>
@@ -196,6 +210,12 @@ textarea{line-height:1.5;min-height:64px}
   <input type="file" id="file-excel" accept=".xlsx,.xls,.csv" onchange="importExcel(this)">
 </div>
 
+<div class="storage-banner" id="storage-banner">
+  <span id="ic-storage-warn"></span>
+  <span>Server chưa cấu hình Redis — dữ liệu chỉ đọc từ file mẫu, chỉnh sửa sẽ không được lưu tự động.</span>
+  <span style="flex:1"></span>
+  <button class="storage-banner" style="background:none;border:1px solid #D97706;border-radius:6px;padding:4px 12px;color:#92400E;font-weight:700;cursor:pointer;font-size:12px;font-family:var(--font-sans)" onclick="exportJSON()">Xuất JSON để lưu</button>
+</div>
 <div class="progress-bar" id="progress-bar"></div>
 
 <div class="tabs">
@@ -264,6 +284,18 @@ function emptyQ(){
 
 /* ── STORAGE (API) ──────────────────────────────────── */
 let Q = emptyQ();
+let storageMode = 'unknown'; // 'redis' | 'readonly' | 'unknown'
+
+function setStorageMode(mode){
+  storageMode = mode;
+  const banner = document.getElementById('storage-banner');
+  if(!banner) return;
+  if(mode === 'readonly'){
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
 
 async function loadData(){
   try{
@@ -271,7 +303,7 @@ async function loadData(){
     const res = await fetch('/api/questions');
     if(!res.ok) throw new Error('HTTP '+res.status);
     const p = await res.json();
-    if(!p) return emptyQ();
+    if(!p){ setSaveStatus('saved'); return emptyQ(); }
     const base = emptyQ();
     if(p.r1) base.r1 = p.r1.map((q,i)=>({...base.r1[i],...q}));
     if(p.r2) base.r2 = p.r2.map((q,i)=>({...base.r2[i],...q}));
@@ -291,6 +323,7 @@ async function loadData(){
 
 let saveTimer=null;
 function schedSave(){
+  if(storageMode==='readonly') return; // không queue save khi không có Redis
   setSaveStatus('saving');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveNow, 800);
@@ -298,7 +331,17 @@ function schedSave(){
 async function saveNow(){
   try{
     const res = await fetch('/api/questions',{method:'POST',headers:{'Content-Type':'application/json'},body: JSON.stringify(Q)});
+    if(res.status === 503){
+      const body = await res.json().catch(()=>({}));
+      if(body.error === 'REDIS_NOT_CONFIGURED' || body.error === 'STORAGE_NOT_CONFIGURED'){
+        setStorageMode('readonly');
+        setSaveStatus('readonly');
+        return;
+      }
+      throw new Error('HTTP 503');
+    }
     if(!res.ok) throw new Error('HTTP '+res.status);
+    setStorageMode('redis');
     setSaveStatus('saved');
   }catch(e){
     setSaveStatus('error');
@@ -307,14 +350,19 @@ async function saveNow(){
 }
 function setSaveStatus(s){
   const el=document.getElementById('save-status'), tx=document.getElementById('save-txt');
-  el.className='save-status '+s;
-  tx.textContent = s==='saved'?'Đã lưu lên server '+new Date().toLocaleTimeString('vi'):s==='saving'?'Đang lưu…':'Lỗi kết nối';
+  el.className='save-status '+(s==='readonly'?'error':s);
+  if(s==='saved') tx.textContent='Đã lưu lên server '+new Date().toLocaleTimeString('vi');
+  else if(s==='saving') tx.textContent='Đang lưu…';
+  else if(s==='readonly') tx.textContent='Chế độ chỉ đọc — Xuất JSON để lưu';
+  else tx.textContent='Lỗi kết nối';
 }
 
-/* ── WEBSOCKET (chỉ để báo toast; trên deploy serverless không có
-   WS server thì bỏ qua sau 2 lần thất bại — autosave HTTP vẫn chạy) ── */
+/* ── WEBSOCKET — chỉ kết nối khi chạy local (có WS server).
+   Trên Vercel serverless không có WS, dừng sau 2 lần thất bại. ── */
 let wsEverOpened=false, wsFailCount=0;
 function connectWS(){
+  // Không thử WS trên Vercel (serverless)
+  if(location.hostname.includes('vercel.app') || location.hostname.includes('vercel.sh')) return;
   let opened=false;
   const proto = location.protocol==='https:'?'wss:':'ws:';
   const ws = new WebSocket(`${proto}//${location.host}`);
@@ -324,7 +372,7 @@ function connectWS(){
   };
   ws.onclose = ()=>{
     if(!opened) wsFailCount++;
-    if(!wsEverOpened && wsFailCount>=2) return;  // serverless: không có WS server
+    if(!wsEverOpened && wsFailCount>=2) return;
     setTimeout(connectWS, 3000);
   };
   ws.onerror = ()=>{ ws.close(); };
@@ -440,18 +488,30 @@ function toggleTeam(tab, ti){
 
 function cardHTML(tab, team, idx, q, label){
   const filled=isFilled(q);
+  const hasContent=q.text.trim().length>0;
   const isMC=q.type!=='written';
   const opts=q.opts||['','','',''];
   const teamAttr = team!==null ? `data-team="${team}"` : '';
   const cardId = team!==null ? `card-${tab}-${team}-${idx}` : `card-${tab}-${idx}`;
+  const dropAttrs=`data-drop-tab="${tab}" data-drop-team="${team===null?'':team}" data-drop-idx="${idx}"`;
+
+  if(!hasContent && !expandedSlots.has(cardId)){
+    return `
+  <div class="qcard empty-slot" id="${cardId}" ${dropAttrs} onclick="expandEmptySlot('${cardId}')">
+    <span class="qnum">${label}</span>
+    <span class="slot-drop-hint">${ic('move',13)} Kéo câu hỏi từ ngân hàng vào đây<span class="slot-or">hoặc nhấn để nhập</span></span>
+  </div>`;
+  }
+
   return `
-  <div class="qcard ${filled?'filled':''}" id="${cardId}" data-drop-tab="${tab}" data-drop-team="${team===null?'':team}" data-drop-idx="${idx}">
+  <div class="qcard ${filled?'filled':''}" id="${cardId}" ${dropAttrs}>
     <div class="qcard-hdr">
       <span class="qnum">${label}</span>
       <div class="type-toggle">
         <button class="type-btn ${isMC?'active':''}"  onclick="setType('${tab}',${team},${idx},'mc')">Trắc nghiệm</button>
         <button class="type-btn ${!isMC?'active':''}" onclick="setType('${tab}',${team},${idx},'written')">Tự luận</button>
       </div>
+      <button class="clear-card-btn" onclick="clearCard('${tab}',${team},${idx})" title="Xóa câu hỏi khỏi ô này">${ic('x',14)}</button>
       <div class="fill-indicator"></div>
     </div>
     <div class="field">
@@ -547,6 +607,7 @@ function getQ(tab, team, idx){
    Cột nhận dạng linh hoạt theo header: Câu hỏi | Loại | A B C D | Đáp án.
    Không có header → mặc định thứ tự cột: text, A, B, C, D, đáp án, loại. */
 let draggingBid=null;
+const expandedSlots=new Set();
 
 function importExcel(input){
   const file=input.files[0]; if(!file) return;
@@ -677,6 +738,28 @@ function dropOnCard(card, bid){
   toast('Đã gán câu hỏi vào '+card.querySelector('.qnum').textContent,'check');
 }
 
+function expandEmptySlot(cardId){
+  expandedSlots.add(cardId);
+  renderMain();
+  setTimeout(()=>{
+    const ta=document.querySelector('#'+cardId+' textarea[data-field="text"]');
+    if(ta) ta.focus();
+  },20);
+}
+
+function clearCard(tab,team,idx){
+  const q=getQ(tab,team,idx); if(!q) return;
+  const oldText=q.text.trim();
+  if(oldText){
+    const bitem=(Q.bank||[]).find(b=>b.used&&b.text.trim()===oldText);
+    if(bitem) bitem.used=false;
+  }
+  q.text=''; q.opts=['','','','']; q.ans='';
+  const cardId=team!==null?`card-${tab}-${team}-${idx}`:`card-${tab}-${idx}`;
+  expandedSlots.delete(cardId);
+  schedSave(); renderMain(); renderBank();
+}
+
 function deleteBankSet(src){
   if(!confirm(`Xóa bộ câu hỏi “${src}”? Các câu đã gán vào vòng thi vẫn được giữ.`)) return;
   Q.bank=(Q.bank||[]).filter(q=>(q.src||'Khác')!==src);
@@ -754,6 +837,7 @@ function paintStaticIcons(){
   document.getElementById('btn-excel').innerHTML  = ic('upload',13)+' Excel';
   document.getElementById('ic-warn').innerHTML    = ic('alert-triangle',20);
   document.getElementById('ic-bank').innerHTML    = ic('layers',16);
+  document.getElementById('ic-storage-warn').innerHTML = ic('alert-triangle',16);
 }
 
 /* ── INIT ───────────────────────────────────────────── */
@@ -763,6 +847,8 @@ function paintStaticIcons(){
   renderMain();
   renderBank();
   connectWS();
+  // Kiểm tra khả năng lưu: delay nhẹ để không block render ban đầu
+  setTimeout(saveNow, 2000);
 })();
 </script>
 </body>
